@@ -1,0 +1,326 @@
+# Templates Melhorados para Copilot Studio - Abertura de Chamados
+# Baseado na análise de 100 tickets reais do GLPI
+
+# =============================================================================
+# TEMPLATE 1: VALIDAÇÃO DE DESCRIÇÃO MÍNIMA
+# =============================================================================
+validation_description:
+  trigger:
+    condition: "len(Topic.description) < 50"
+  action:
+    type: "request_clarification"
+    message: |
+      Sua descrição está muito breve. Para que possamos ajudar melhor, 
+      por favor forneça mais detalhes:
+      
+      • Quando o problema acontece?
+      • Que mensagem de erro aparece (se houver)?
+      • O que você estava fazendo quando aconteceu?
+      • Qual o comportamento esperado?
+    required: true
+
+# =============================================================================
+# TEMPLATE 2: DETECÇÃO DE PALAVRAS VAGAS
+# =============================================================================
+vague_words_handler:
+  trigger_words:
+    - "problema"
+    - "erro" 
+    - "não funciona"
+    - "quebrou"
+    - "parou"
+    - "travou"
+    - "bugou"
+    - "deu pau"
+    - "não vai"
+    - "não abre"
+    - "lento"
+    - "ruim"
+  
+  responses:
+    "problema": |
+      Você mencionou "problema". Pode ser mais específico?
+      • Que tipo de problema exatamente?
+      • Há alguma mensagem de erro?
+      • O que você esperava que acontecesse?
+    
+    "erro": |
+      Você mencionou "erro". Pode fornecer mais detalhes?
+      • Qual a mensagem de erro exata?
+      • Quando o erro aparece?
+      • Há algum código de erro?
+    
+    "não funciona": |
+      Você disse que "não funciona". Pode esclarecer?
+      • O que especificamente não está funcionando?
+      • Funcionava antes?
+      • O que acontece quando você tenta usar?
+
+# =============================================================================
+# TEMPLATE 3: FLUXOS ESPECÍFICOS POR CATEGORIA
+# =============================================================================
+
+# HARDWARE (Categoria mais comum - 17% dos tickets)
+hardware_flow:
+  category_id: 7
+  additional_questions:
+    equipment_type:
+      question: "Qual equipamento está com problema?"
+      type: "choice"
+      options:
+        - "Computador/Notebook"
+        - "Impressora"
+        - "Monitor"
+        - "Teclado/Mouse"
+        - "Scanner"
+        - "Projetor"
+        - "Telefone"
+        - "Outro"
+      required: true
+    
+    equipment_details:
+      question: "Qual a marca e modelo do equipamento? (Se souber)"
+      type: "text"
+      placeholder: "Ex: HP LaserJet 1020, Dell OptiPlex 7090"
+    
+    problem_frequency:
+      question: "Com que frequência o problema acontece?"
+      type: "choice"
+      options:
+        - "Sempre (toda vez que uso)"
+        - "Às vezes (esporadicamente)"
+        - "Primeira vez que acontece"
+        - "Começou hoje"
+      required: true
+    
+    error_message:
+      question: "Há alguma mensagem de erro ou luz piscando? Se sim, descreva:"
+      type: "text"
+      placeholder: "Ex: Luz vermelha piscando, mensagem 'Papel atolado'"
+    
+    equipment_location:
+      question: "Onde está localizado o equipamento?"
+      type: "text"
+      placeholder: "Ex: Sala 201, Mesa da recepção, Departamento Financeiro"
+      required: true
+
+  title_template: "Hardware - {equipment_type} - {problem_summary}"
+
+# SOFTWARE (Segunda categoria mais comum - 12% dos tickets)
+software_flow:
+  category_id: 20
+  additional_questions:
+    software_name:
+      question: "Qual programa/sistema está com problema?"
+      type: "text"
+      placeholder: "Ex: Microsoft Word, Sistema FPE, Google Chrome"
+      required: true
+    
+    software_version:
+      question: "Sabe qual a versão do programa? (Opcional)"
+      type: "text"
+      placeholder: "Ex: Office 365, versão 2023"
+    
+    error_moment:
+      question: "Quando o problema acontece?"
+      type: "choice"
+      options:
+        - "Ao tentar abrir o programa"
+        - "Durante o uso normal"
+        - "Ao salvar arquivos"
+        - "Ao fechar o programa"
+        - "O programa não abre"
+        - "Outro momento"
+      required: true
+    
+    error_details:
+      question: "Descreva o que acontece ou qual mensagem aparece:"
+      type: "text"
+      placeholder: "Ex: Tela fica branca, aparece mensagem 'Erro 404', programa fecha sozinho"
+      required: true
+    
+    affects_others:
+      question: "Outros usuários têm o mesmo problema?"
+      type: "choice"
+      options:
+        - "Sim, outros também têm"
+        - "Não, só comigo"
+        - "Não sei/Não testei"
+    
+    recent_changes:
+      question: "Houve alguma mudança recente? (Atualizações, instalações, etc.)"
+      type: "text"
+      placeholder: "Ex: Instalei um programa novo ontem, atualizou automaticamente"
+
+  title_template: "Software - {software_name} - {error_summary}"
+
+# CONECTIVIDADE/REDE (Terceira categoria mais comum - 9% dos tickets)
+network_flow:
+  category_id: 8
+  additional_questions:
+    network_type:
+      question: "Qual tipo de problema de rede?"
+      type: "choice"
+      options:
+        - "Sem internet"
+        - "Internet lenta"
+        - "Não acessa sistemas internos"
+        - "Problema com VPN"
+        - "Não conecta na rede Wi-Fi"
+        - "Problema com e-mail"
+        - "Outro"
+      required: true
+    
+    user_location:
+      question: "Onde você está localizado?"
+      type: "text"
+      placeholder: "Ex: Sala 301, Departamento RH, Prédio Anexo"
+      required: true
+    
+    other_users_affected:
+      question: "Outros usuários no mesmo local têm o problema?"
+      type: "choice"
+      options:
+        - "Sim, todos têm problema"
+        - "Sim, alguns têm problema"
+        - "Não, só eu tenho problema"
+        - "Não sei/Não perguntei"
+      required: true
+    
+    network_error:
+      question: "Há alguma mensagem de erro específica?"
+      type: "text"
+      placeholder: "Ex: 'Sem conexão com a internet', 'Servidor não encontrado'"
+    
+    when_started:
+      question: "Quando o problema começou?"
+      type: "choice"
+      options:
+        - "Agora mesmo"
+        - "Hoje de manhã"
+        - "Ontem"
+        - "Esta semana"
+        - "Não lembro"
+
+  title_template: "Rede - {user_location} - {network_type}"
+
+# =============================================================================
+# TEMPLATE 4: VALIDAÇÃO DE TÍTULOS GENÉRICOS
+# =============================================================================
+generic_title_handler:
+  generic_words:
+    - "problema"
+    - "erro"
+    - "ajuda"
+    - "suporte"
+    - "dúvida"
+    - "questão"
+    - "solicitação"
+    - "pedido"
+    - "urgente"
+    - "importante"
+  
+  action:
+    type: "suggest_better_title"
+    message: |
+      O título "{current_title}" é muito genérico. 
+      Baseado nas suas respostas, sugerimos:
+      "{suggested_title}"
+      
+      Deseja usar este título ou prefere escrever outro?
+    
+    options:
+      - "Usar título sugerido"
+      - "Escrever meu próprio título"
+
+# =============================================================================
+# TEMPLATE 5: CAMPOS OBRIGATÓRIOS DINÂMICOS
+# =============================================================================
+dynamic_required_fields:
+  hardware:
+    required_fields:
+      - "equipment_type"
+      - "equipment_location"
+      - "problem_frequency"
+      - "Topic.location"
+      - "Topic.contact_phone"
+  
+  software:
+    required_fields:
+      - "software_name"
+      - "error_moment"
+      - "error_details"
+      - "Topic.location"
+      - "Topic.contact_phone"
+  
+  network:
+    required_fields:
+      - "network_type"
+      - "user_location"
+      - "other_users_affected"
+      - "Topic.contact_phone"
+  
+  access_request:
+    required_fields:
+      - "system_name"
+      - "access_type"
+      - "business_justification"
+      - "Topic.location"
+      - "Topic.contact_phone"
+
+# =============================================================================
+# TEMPLATE 6: MENSAGENS DE ORIENTAÇÃO
+# =============================================================================
+guidance_messages:
+  welcome: |
+    Olá! Vou ajudar você a abrir um chamado no GLPI.
+    Para que possamos resolver seu problema rapidamente, 
+    vou fazer algumas perguntas específicas.
+  
+  category_selection: |
+    Primeiro, vamos identificar o tipo do seu problema.
+    Isso me ajudará a fazer as perguntas certas.
+  
+  description_help: |
+    Agora descreva seu problema com detalhes.
+    Quanto mais informações você fornecer, mais rápido conseguiremos ajudar!
+    
+    Dicas:
+    • O que você estava fazendo quando aconteceu?
+    • Que mensagem aparece (se houver)?
+    • Funcionava antes?
+  
+  completion: |
+    Perfeito! Seu chamado foi criado com sucesso.
+    
+    📋 **Número do chamado:** {ticket_number}
+    🏷️ **Categoria:** {category}
+    📍 **Local:** {location}
+    📞 **Contato:** {phone}
+    
+    Nossa equipe técnica entrará em contato em breve.
+    Você pode acompanhar o andamento pelo GLPI.
+
+# =============================================================================
+# TEMPLATE 7: VALIDAÇÕES FINAIS
+# =============================================================================
+final_validations:
+  before_submit:
+    - check: "description_length >= 50"
+      error: "Descrição deve ter pelo menos 50 caracteres"
+    
+    - check: "no_vague_words_remaining"
+      error: "Ainda há termos muito vagos na descrição"
+    
+    - check: "all_required_fields_filled"
+      error: "Todos os campos obrigatórios devem ser preenchidos"
+    
+    - check: "title_not_generic"
+      error: "Título deve ser mais específico"
+  
+  success_criteria:
+    - "Descrição detalhada (>= 50 caracteres)"
+    - "Categoria específica selecionada"
+    - "Informações técnicas fornecidas"
+    - "Local e contato informados"
+    - "Título descritivo"

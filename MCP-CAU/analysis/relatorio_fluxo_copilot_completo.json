@@ -1,0 +1,179 @@
+{
+  "timestamp": "2025-11-01T12:38:45.445720",
+  "test_type": "Fluxo Completo Copilot Studio - Fase 1",
+  "total_tests": 5,
+  "results": [
+    {
+      "test_name": "Descrição muito curta",
+      "expected_outcome": "Deve ser bloqueado pelo Copilot Studio",
+      "validations": [
+        {
+          "validation": "description_length",
+          "passed": false,
+          "message": "❌ Descrição muito curta. Forneça uma descrição detalhada com pelo menos 50 caracteres."
+        },
+        {
+          "validation": "vague_words",
+          "passed": false,
+          "message": "❌ Descrição contém palavras vagas: problema. Seja mais específico."
+        },
+        {
+          "validation": "location",
+          "passed": true,
+          "message": "✅ Localização fornecida"
+        },
+        {
+          "validation": "phone",
+          "passed": true,
+          "message": "✅ Telefone fornecido"
+        }
+      ],
+      "copilot_decision": "BLOCK_API_CALL",
+      "api_call_made": false,
+      "api_response": null,
+      "final_result": "VALIDATION_FAILED"
+    },
+    {
+      "test_name": "Descrição com palavras vagas",
+      "expected_outcome": "Deve ser bloqueado pelo Copilot Studio",
+      "validations": [
+        {
+          "validation": "description_length",
+          "passed": true,
+          "message": "✅ Descrição tem tamanho adequado"
+        },
+        {
+          "validation": "vague_words",
+          "passed": false,
+          "message": "❌ Descrição contém palavras vagas: problema, não funciona. Seja mais específico."
+        },
+        {
+          "validation": "location",
+          "passed": true,
+          "message": "✅ Localização fornecida"
+        },
+        {
+          "validation": "phone",
+          "passed": true,
+          "message": "✅ Telefone fornecido"
+        }
+      ],
+      "copilot_decision": "BLOCK_API_CALL",
+      "api_call_made": false,
+      "api_response": null,
+      "final_result": "VALIDATION_FAILED"
+    },
+    {
+      "test_name": "Localização vazia",
+      "expected_outcome": "Deve ser bloqueado pelo Copilot Studio",
+      "validations": [
+        {
+          "validation": "description_length",
+          "passed": true,
+          "message": "✅ Descrição tem tamanho adequado"
+        },
+        {
+          "validation": "vague_words",
+          "passed": true,
+          "message": "✅ Descrição é específica e detalhada"
+        },
+        {
+          "validation": "location",
+          "passed": false,
+          "message": "❌ Localização é obrigatória e deve ter pelo menos 3 caracteres."
+        },
+        {
+          "validation": "phone",
+          "passed": true,
+          "message": "✅ Telefone fornecido"
+        }
+      ],
+      "copilot_decision": "BLOCK_API_CALL",
+      "api_call_made": false,
+      "api_response": null,
+      "final_result": "VALIDATION_FAILED"
+    },
+    {
+      "test_name": "Telefone vazio",
+      "expected_outcome": "Deve ser bloqueado pelo Copilot Studio",
+      "validations": [
+        {
+          "validation": "description_length",
+          "passed": true,
+          "message": "✅ Descrição tem tamanho adequado"
+        },
+        {
+          "validation": "vague_words",
+          "passed": true,
+          "message": "✅ Descrição é específica e detalhada"
+        },
+        {
+          "validation": "location",
+          "passed": true,
+          "message": "✅ Localização fornecida"
+        },
+        {
+          "validation": "phone",
+          "passed": false,
+          "message": "❌ Telefone é obrigatório e deve ter pelo menos 8 dígitos."
+        }
+      ],
+      "copilot_decision": "BLOCK_API_CALL",
+      "api_call_made": false,
+      "api_response": null,
+      "final_result": "VALIDATION_FAILED"
+    },
+    {
+      "test_name": "Dados válidos",
+      "expected_outcome": "Deve passar por todas as validações e criar ticket",
+      "validations": [
+        {
+          "validation": "description_length",
+          "passed": true,
+          "message": "✅ Descrição tem tamanho adequado"
+        },
+        {
+          "validation": "vague_words",
+          "passed": true,
+          "message": "✅ Descrição é específica e detalhada"
+        },
+        {
+          "validation": "location",
+          "passed": true,
+          "message": "✅ Localização fornecida"
+        },
+        {
+          "validation": "phone",
+          "passed": true,
+          "message": "✅ Telefone fornecido"
+        }
+      ],
+      "copilot_decision": "PROCEED_TO_API",
+      "api_call_made": true,
+      "api_response": {
+        "status_code": 201,
+        "response_data": {
+          "categoria": "HARDWARE_IMPRESSORA",
+          "details": {
+            "category": "HARDWARE_IMPRESSORA",
+            "impact": "BAIXO",
+            "location": "Segundo Andar - Sala 205",
+            "title": "Problema na impressora HP LaserJet"
+          },
+          "message": "Chamado #11044 criado com sucesso!",
+          "success": true,
+          "sucesso": true,
+          "ticket_id": 11044,
+          "trace_id": "25644867-dce5-40c6-9897-befe04072421"
+        }
+      },
+      "final_result": "SUCCESS"
+    }
+  ],
+  "summary": {
+    "validation_blocks": 4,
+    "api_successes": 1,
+    "api_errors": 0,
+    "exceptions": 0
+  }
+}

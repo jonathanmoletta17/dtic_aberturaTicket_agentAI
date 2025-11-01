@@ -1,0 +1,85 @@
+{
+  "resumo_geral": {
+    "total_tickets_analisados": 20,
+    "data_analise": "2025-11-01 10:54:21"
+  },
+  "problemas_descricao": {
+    "muito_curtas": {
+      "quantidade": 0,
+      "percentual": 0.0,
+      "exemplos": []
+    },
+    "vagas": {
+      "quantidade": 1,
+      "percentual": 5.0,
+      "exemplos": [
+        {
+          "id": 11,
+          "titulo": "reset de credenciais office 365",
+          "descricao": "&#60;div id=\"divrplyfwdmsg\" style=\"border: 0px; padding: 0px; text-align: start; -webkit-text-stroke..."
+        }
+      ]
+    },
+    "sem_contexto": {
+      "quantidade": 1,
+      "percentual": 5.0,
+      "exemplos": [
+        {
+          "id": 23,
+          "titulo": "conexão wifi",
+          "descricao": "&#60;p&#62;conectar a rede wifi&#60;/p&#62;"
+        }
+      ]
+    },
+    "bem_descritas": {
+      "quantidade": 18,
+      "percentual": 90.0,
+      "exemplos": [
+        {
+          "id": 5,
+          "titulo": "troca de perifierico",
+          "descricao": "&#60;p&#62;usuário solicita troca de teclado&#60;/p&#62;"
+        },
+        {
+          "id": 6,
+          "titulo": "inclusão em caixa compartilhada",
+          "descricao": "&#60;p&#62;bom dia, jorge!&#60;/p&#62;\n&#60;p&#62;agora sim, consegui compartilhar.&#60;/p&#62;\n&#60..."
+        },
+        {
+          "id": 7,
+          "titulo": "criação de credenciais",
+          "descricao": "&#60;p&#62;bom dia.&#60;/p&#62;\n&#60;p&#62;solicito criação de conta office365 para o servidor ander..."
+        }
+      ]
+    }
+  },
+  "analise_categorias": {
+    "distribuicao": {
+      "25": 1,
+      "4": 2,
+      "3": 1,
+      "7": 4,
+      "8": 2,
+      "10": 1,
+      "2": 1,
+      "11": 1,
+      "48": 1,
+      "13": 1,
+      "14": 1,
+      "17": 1,
+      "18": 2,
+      "19": 1
+    },
+    "sem_categoria": 0,
+    "total": 20
+  },
+  "recomendacoes": [
+    "Implementar validação de tamanho mínimo para descrições (mínimo 30 caracteres)",
+    "Adicionar perguntas direcionadas baseadas na categoria selecionada",
+    "Criar templates de descrição para categorias mais comuns",
+    "Implementar sugestões automáticas durante a digitação",
+    "Adicionar campo obrigatório para 'Passos para reproduzir o problema'",
+    "Criar validação para evitar palavras muito genéricas",
+    "Implementar sistema de tags para melhor categorização"
+  ]
+}

@@ -1,0 +1,143 @@
+# Name: Se houver erro
+# Esse tópico do sistema é desencadeado quando o agente encontra um erro. Ao usar o painel de chat de teste, a descrição completa do erro é exibida.
+kind: AdaptiveDialog
+modelDescription: Tópico para criação de chamados e tickets de suporte técnico no sistema GLPI
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    triggerQueries:
+      - criar chamado
+      - abrir ticket
+      - preciso de ajuda
+      - reportar problema
+      - criar ticket
+      - novo chamado
+      - solicitar suporte
+      - minha impressora não funciona
+      - problema com impressora
+      - impressora com defeito
+      - equipamento não funciona
+      - problema técnico
+      - suporte técnico
+      - ajuda com equipamento
+      - abrir um chamado
+      - fazer um ticket
+      - registrar problema
+      - tenho um problema
+      - preciso de suporte
+      - criar um ticket
+      - abrir um ticket
+      - fazer chamado
+
+  actions:
+    - kind: SendActivity
+      id: WelcomeMessage
+      activity: |
+        🎫 **Vamos criar seu chamado!**
+
+        Por favor, forneça as seguintes informações:
+
+    - kind: Question
+      id: GetDescription
+      alwaysPrompt: true
+      variable: Topic.description
+      prompt: |
+        📝 **Descrição do problema** (obrigatório):
+
+        Descreva detalhadamente o problema ou solicitação:
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: GetImpact
+      alwaysPrompt: false
+      variable: Topic.impact
+      prompt: |
+        ⚡ **Impacto** (opcional):
+
+        Qual o impacto deste problema?
+        - BAIXO
+        - MEDIO  
+        - ALTO
+
+        Digite uma das opções ou deixe em branco para MEDIO:
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: GetLocation
+      alwaysPrompt: false
+      variable: Topic.location
+      prompt: |
+        📍 **Localização** (opcional):
+
+        Onde você está localizado? (ex: Sala 101, Andar 2, etc.)
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: GetContactPhone
+      alwaysPrompt: false
+      variable: Topic.contact_phone
+      prompt: |
+        📞 **Telefone de contato** (opcional):
+
+        Telefone para contato (ex: (11) 99999-9999):
+      entity: PhoneNumberPrebuiltEntity
+
+    - kind: SendActivity
+      id: ProcessingMessage
+      activity: |
+        ⏳ Processando seu chamado...
+
+    - kind: HttpRequestAction
+      id: CreateTicketRequest
+      method: Post
+      url: https://polite-pumas-allow.loca.lt/api/create-ticket-complete
+      headers:
+        Content-Type: application/json
+
+      body:
+        kind: JsonRequestContent
+        content:
+          category: INCIDENTE
+          contact_phone: =Topic.contact_phone
+          description: =Topic.description
+          impact: =If(IsBlank(Topic.impact), "MEDIO", Text(Topic.impact))
+          location: =Topic.location
+          title: Chamado via Copilot Studio
+
+      response: Topic.ticketResult
+
+    - kind: ConditionGroup
+      id: CheckTicketCreation
+      conditions:
+        - id: TicketSuccess
+          condition: =Boolean(Topic.ticketResult.success)
+          actions:
+            - kind: SendActivity
+              id: SuccessMessage
+              activity: |
+                ✅ **Chamado criado com sucesso!**
+
+                🎫 **Número do Chamado:** #{Topic.ticketResult.ticket_id}
+                📋 **Categoria:** {Topic.ticketResult.category}
+                📝 **Descrição:** {Topic.description}
+                ⚡ **Impacto:** {Topic.impact}
+                📍 **Localização:** {Topic.location}
+                🔍 **Trace ID:** {Topic.ticketResult.trace_id}
+
+                Seu chamado foi registrado e será atendido em breve!
+
+      elseActions:
+        - kind: SendActivity
+          id: ErrorMessage
+          activity: |
+            ❌ **Erro ao criar chamado**
+
+            🔍 **Trace ID:** {Topic.ticketResult.trace_id}
+            ⚠️ **Erro:** {Topic.ticketResult.error}
+
+            Tente novamente ou entre em contato com o suporte.
+
+    - kind: SendActivity
+      id: FinalMessage
+      activity: 💬 Posso ajudar com mais alguma coisa?
