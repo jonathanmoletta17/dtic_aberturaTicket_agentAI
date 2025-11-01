@@ -261,7 +261,7 @@ beginDialog:
     - kind: HttpRequestAction
       id: CreateTicketRequest
       method: Post
-      url: http://localhost:5000/api/create-ticket-complete
+      url: https://mcp-cau-api.loca.lt/api/create-ticket-complete
       headers:
         Content-Type: application/json; charset=utf-8
 
