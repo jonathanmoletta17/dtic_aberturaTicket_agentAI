@@ -263,18 +263,21 @@ beginDialog:
       method: Post
       url: http://localhost:5000/api/create-ticket-complete
       headers:
-        Content-Type: application/json
+        Content-Type: application/json; charset=utf-8
 
       body:
         kind: JsonRequestContent
         content: |
           {
-            "category": "{Topic.category_user_friendly}",
-            "contact_phone": "{Topic.contact_phone}",
-            "description": "{Topic.description}",
-            "impact": "{If(IsBlank(Topic.impact), \"MEDIO\", Text(Topic.impact))}",
-            "location": "{Topic.location}",
-            "title": "Chamado via Copilot Studio"
+            "categoria": "{Topic.category_user_friendly}",
+            "titulo": "Chamado via Copilot Studio",
+            "descricao": "{Topic.description}",
+            "impacto": "{If(IsBlank(Topic.impact), \"MEDIO\", Text(Topic.impact))}",
+            "urgencia": "MEDIA",
+            "localizacao": "{Topic.location}",
+            "solicitante": "Usuario Copilot Studio",
+            "email": "copilot@empresa.com",
+            "telefone_contato": "{Topic.contact_phone}"
           }
 
       response: Topic.ticketResult
