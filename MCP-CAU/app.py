@@ -20,6 +20,7 @@ Versão: 2.0
 
 import os
 import uuid
+import json
 import logging
 import requests
 from flask import Flask, request, jsonify
@@ -123,7 +124,8 @@ CATEGORY_MAP = {
 def mapear_categoria(category_user_friendly):
     """Mapeia categoria user-friendly para ID de categoria GLPI"""
     if not category_user_friendly:
-        return 1  # ID da categoria padrão
+        # Usa categoria OUTROS como padrão para entradas vazias
+        return CATEGORY_MAP["OUTROS"]["glpi_category_id"]
     
     # Se já for um inteiro (ID), retorna ele mesmo
     if isinstance(category_user_friendly, int):
@@ -138,7 +140,8 @@ def mapear_categoria(category_user_friendly):
     
     # Se não encontrar, retorna ID da categoria padrão
     logger.warning(f"Categoria não encontrada: {category_user_friendly}. Usando categoria padrão.")
-    return 1
+    # Usa categoria OUTROS como fallback quando não há correspondência
+    return CATEGORY_MAP["OUTROS"]["glpi_category_id"]
 
 def autenticar_glpi():
     """Autentica no GLPI e retorna headers com session token"""
@@ -175,18 +178,29 @@ def autenticar_glpi():
 def criar_ticket_glpi(dados):
     """Cria ticket no GLPI"""
     try:
+        logger.info(f"=== INICIANDO CRIAÇÃO DE TICKET NO GLPI ===")
+        logger.info(f"Dados recebidos: {dados}")
+        
         # Autentica no GLPI
+        logger.info("Iniciando autenticação no GLPI...")
         headers = autenticar_glpi()
+        logger.info(f"Headers de autenticação: {headers}")
         
         # Mapeia impacto e urgência
-        impact = IMPACT_MAP.get(dados.get("impact", "MEDIO").upper(), 2)
-        urgency = URGENCY_MAP.get(dados.get("urgency", "MEDIA").upper(), 2)
+        impact_raw = dados.get("impact", "MEDIO").upper()
+        urgency_raw = dados.get("urgency", "MEDIA").upper()
+        impact = IMPACT_MAP.get(impact_raw, 2)
+        urgency = URGENCY_MAP.get(urgency_raw, 2)
+        logger.info(f"Mapeamento - Impact: {impact_raw} -> {impact}, Urgency: {urgency_raw} -> {urgency}")
         
         # Calcula prioridade baseada em impacto e urgência
         priority = min(5, max(1, (impact + urgency) // 2))
+        logger.info(f"Prioridade calculada: {priority}")
         
         # Mapeia categoria user-friendly para ID GLPI
-        category_id = mapear_categoria(dados.get("category"))
+        category_raw = dados.get("category")
+        category_id = mapear_categoria(category_raw)
+        logger.info(f"Mapeamento categoria: {category_raw} -> {category_id}")
         
         # Monta o conteúdo completo
         content_parts = [dados.get("description", "")]
@@ -199,6 +213,7 @@ def criar_ticket_glpi(dados):
             content_parts.append(f"Categoria: {dados['category']}")
             
         content = "\\n\\n".join(filter(None, content_parts))
+        logger.info(f"Conteúdo montado: {content}")
         
         # Monta payload para o GLPI
         payload = {
@@ -215,25 +230,39 @@ def criar_ticket_glpi(dados):
             }
         }
         
-        logger.info(f"Payload enviado ao GLPI: {payload}")
+        logger.info(f"=== PAYLOAD COMPLETO PARA GLPI ===")
+        logger.info(f"Payload: {payload}")
         
         # Envia para o GLPI com encoding UTF-8 explícito
         import json
         payload_json = json.dumps(payload, ensure_ascii=False)
+        logger.info(f"Payload JSON: {payload_json}")
         
         # Atualiza headers para incluir charset UTF-8
         headers_with_charset = headers.copy()
         headers_with_charset["Content-Type"] = "application/json; charset=utf-8"
+        logger.info(f"Headers finais: {headers_with_charset}")
         
+        url_completa = f"{GLPI_URL}/Ticket"
+        logger.info(f"URL da requisição: {url_completa}")
+        
+        logger.info("=== ENVIANDO REQUISIÇÃO PARA GLPI ===")
         response = requests.post(
-            f"{GLPI_URL}/Ticket",
+            url_completa,
             headers=headers_with_charset,
             data=payload_json.encode('utf-8'),
             timeout=10
         )
         
-        logger.info(f"Status da resposta GLPI: {response.status_code}")
-        logger.info(f"Resposta GLPI: {response.text}")
+        logger.info(f"=== RESPOSTA DO GLPI ===")
+        logger.info(f"Status Code: {response.status_code}")
+        logger.info(f"Headers da resposta: {dict(response.headers)}")
+        logger.info(f"Conteúdo da resposta: {response.text}")
+        
+        if response.status_code != 201:
+            logger.error(f"GLPI retornou status {response.status_code} em vez de 201")
+            logger.error(f"Resposta completa: {response.text}")
+            raise RuntimeError(f"GLPI retornou status {response.status_code}: {response.text}")
         
         response.raise_for_status()
         
@@ -241,12 +270,18 @@ def criar_ticket_glpi(dados):
         ticket_id = result.get("id")
         
         if not ticket_id:
+            logger.error(f"ID do ticket não encontrado na resposta: {result}")
             raise RuntimeError("ID do ticket não retornado pelo GLPI")
             
+        logger.info(f"=== TICKET CRIADO COM SUCESSO ===")
+        logger.info(f"ID do ticket: {ticket_id}")
         return ticket_id
         
     except Exception as e:
-        logger.error(f"Erro ao criar ticket no GLPI: {str(e)}")
+        logger.error(f"=== ERRO NA CRIAÇÃO DO TICKET ===")
+        logger.error(f"Tipo do erro: {type(e).__name__}")
+        logger.error(f"Mensagem do erro: {str(e)}")
+        logger.error(f"Dados que causaram o erro: {dados}")
         raise
 
 @app.route("/", methods=["GET"])
@@ -305,15 +340,31 @@ def create_ticket_complete():
     Returns:
         JSON: Resposta com status da criação do ticket
     """
-    trace_id = str(uuid.uuid4())
+    trace_id = str(uuid.uuid4())[:8]
     
     try:
-        # Processa dados JSON da requisição
-        data = request.get_json(force=True)
-        logger.info(f"[{trace_id}] Dados recebidos: {data}")
+        logger.info(f"[{trace_id}] === INICIANDO CREATE_TICKET_COMPLETE ===")
+        # Logs detalhados apenas em nível debug para evitar ruído em produção
+        logger.debug(f"[{trace_id}] Content-Type: {request.content_type}")
+        logger.debug(f"[{trace_id}] Headers: {dict(request.headers)}")
+        logger.debug(f"[{trace_id}] Raw data: {request.get_data()}")
+
+        # Processa dados JSON da requisição de forma simples e objetiva
+        data = request.get_json(force=True, silent=True)
+        logger.debug(f"[{trace_id}] Dados recebidos via get_json: {data}")
+        if not isinstance(data, dict):
+            logger.error(f"[{trace_id}] JSON inválido ou ausente")
+            return jsonify({
+                "sucesso": False,
+                "success": False,
+                "error": "Erro no formato JSON: corpo ausente ou inválido",
+                "erro": "Erro no formato JSON: corpo ausente ou inválido",
+                "trace_id": trace_id
+            }), 400
         
         # Validação básica de dados
         if not data:
+            logger.error(f"[{trace_id}] ERRO: Dados JSON não fornecidos")
             return jsonify({
                 "sucesso": False,
                 "success": False,
@@ -324,28 +375,35 @@ def create_ticket_complete():
         
         def is_powerfx_expression(value):
             """
-            Detecta expressões PowerFx não processadas
-            
-            Args:
-                value: Valor a ser verificado
-                
-            Returns:
-                bool: True se for uma expressão PowerFx não processada
+            Detecta expressões PowerFx não processadas vindas do Copilot Studio.
+
+            Casos tratados:
+            - Sintaxe com chaves: "{Topic.campo}" (alguns editores inserem chaves)
+            - Sintaxe com sinal de igual: "=Topic.campo" (Copilot Studio/PowerFx)
+            - Sintaxe com marcador inline: "@{Topic.campo}" (variações do editor)
             """
             if isinstance(value, str):
-                return (value.startswith('{') and 
-                       value.endswith('}') and 
-                       'Topic.' in value)
+                v = value.strip()
+                patterns = [
+                    (v.startswith('{') and v.endswith('}') and 'Topic.' in v),
+                    (v.startswith('=') and 'Topic.' in v),
+                    (v.startswith('@{') and v.endswith('}') and 'Topic.' in v),
+                ]
+                return any(patterns)
             return False
 
         # Verifica se há expressões PowerFx não processadas
+        logger.info(f"[{trace_id}] Verificando expressões PowerFx não processadas...")
         powerfx_fields = []
         for key, value in data.items():
+            logger.info(f"[{trace_id}] Verificando campo {key}: {value}")
             if is_powerfx_expression(value):
+                logger.info(f"[{trace_id}] Campo PowerFx detectado: {key}: {value}")
                 powerfx_fields.append(f"{key}: {value}")
         
+        logger.info(f"[{trace_id}] Campos PowerFx encontrados: {powerfx_fields}")
         if powerfx_fields:
-            return jsonify({
+            error_response = {
                 "sucesso": False,
                 "success": False,
                 "error": "Expressões PowerFx não processadas detectadas",
@@ -355,7 +413,9 @@ def create_ticket_complete():
                     "suggestion": "Verifique se as variáveis Topic estão sendo definidas corretamente no Copilot Studio"
                 },
                 "trace_id": trace_id
-            }), 400
+            }
+            logger.info(f"[{trace_id}] Retornando erro PowerFx: {error_response}")
+            return jsonify(error_response), 400
         
         # Normaliza campos para aceitar português e inglês
         description = data.get('description') or data.get('descricao')
@@ -379,10 +439,10 @@ def create_ticket_complete():
             'location': location,
             'contact_phone': contact_phone
         }
-        
+
         # ========== VALIDAÇÕES DA FASE 1 - BACKUP NO BACKEND ==========
-        
-        # Validação 1: Descrição obrigatória e tamanho mínimo
+
+        # Validação 1: Descrição obrigatória e tamanho mínimo considerando conteúdo completo
         if not description:
             return jsonify({
                 "sucesso": False,
@@ -391,15 +451,25 @@ def create_ticket_complete():
                 "erro": "Campo 'description/descricao' é obrigatório",
                 "trace_id": trace_id
             }), 400
-            
-        if len(description.strip()) < 50:
+        
+        # Monta conteúdo similar ao que será enviado ao GLPI para validar tamanho
+        content_parts_validate = [description or ""]
+        if location:
+            content_parts_validate.append(f"Local: {location}")
+        if contact_phone:
+            content_parts_validate.append(f"Telefone: {contact_phone}")
+        if category:
+            content_parts_validate.append(f"Categoria: {category}")
+        full_content_validate = "\n\n".join(filter(None, content_parts_validate))
+
+        if len(full_content_validate.strip()) < 50:
             return jsonify({
                 "sucesso": False,
                 "success": False,
                 "error": "Descrição muito curta",
-                "erro": "A descrição deve ter pelo menos 50 caracteres. Forneça mais detalhes sobre o problema.",
+                "erro": "O conteúdo total do chamado está curto. Inclua mais detalhes na descrição ou informe local, telefone e categoria para complementar.",
                 "details": {
-                    "current_length": len(description.strip()),
+                    "current_length": len(full_content_validate.strip()),
                     "required_length": 50
                 },
                 "trace_id": trace_id
@@ -410,7 +480,7 @@ def create_ticket_complete():
         description_lower = description.lower()
         found_vague_words = [word for word in vague_words if word in description_lower]
         
-        if found_vague_words and len(description.strip()) < 100:
+        if found_vague_words and len(full_content_validate.strip()) < 100:
             return jsonify({
                 "sucesso": False,
                 "success": False,

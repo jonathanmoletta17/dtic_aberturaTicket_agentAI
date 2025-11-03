@@ -1,0 +1,10 @@
+# Runtime logs
+*.log
+
+# Python caches
+__pycache__/
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db

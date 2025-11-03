@@ -1,5 +1,80 @@
 # Guia de Configuração HTTP para Copilot Studio
 
+Objetivo
+- Configurar corretamente o passo HTTP do seu agente para criar tickets na API (`POST /api/create-ticket-complete`) sem erros de 400 por causa de PowerFx não processado.
+
+Pré-requisitos
+- API acessível (local `http://localhost:5000` ou túnel público) e variável `GLPI_URL` configurada.
+- Headers: `Content-Type: application/json; charset=utf-8` e `Accept: application/json`.
+
+URL e Método
+- URL: `https://<seu-tunel>.loca.lt/api/create-ticket-complete`
+- Método: `POST`
+ - Teste direto sem parâmetros extras.
+
+Headers
+- Adicione: `Content-Type` = `application/json; charset=utf-8`
+- Adicione: `Accept` = `application/json`
+
+Corpo (Conteúdo JSON)
+- Insira variáveis via botão de conteúdo dinâmico (ícone `fx`/raio). Não digite `=Topic.*` manualmente.
+
+Exemplo Correto (sem aspas em volta das expressões)
+```
+{
+  "title": "Chamado via Copilot Studio",
+  "description": =Topic.description,
+  "category": =Topic.category_user_friendly,
+  "impact": =If(IsBlank(Topic.impact), "MEDIO", Text(Topic.impact)),
+  "location": =Topic.location,
+  "contact_phone": =Topic.contact_phone
+}
+```
+
+Exemplo Incorreto (evitar)
+```
+{
+  "description": "=Topic.description",
+  "category": "=Topic.category_user_friendly",
+  "impact": "=Topic.impact"
+}
+```
+- O exemplo incorreto envia as expressões como texto literal e a API rejeita com erro de PowerFx não processado.
+
+Tipo de Dados de Resposta
+- Selecionar `JSON` e salvar em uma variável (ex.: `ticketResult`).
+- Campos importantes na resposta: `sucesso`, `ticket_id`, `trace_id`, `details`.
+
+Valores Válidos
+- `category`: chaves conhecidas (`HARDWARE_COMPUTADOR`, `HARDWARE_IMPRESSORA`, `HARDWARE_MONITOR`, `SOFTWARE`, `CONECTIVIDADE`, `SEGURANCA`, `SOLICITACAO`, `OUTROS`).
+- `impact`: `BAIXO`, `MEDIO`, `ALTO`, `MUITO_ALTO`, `CRITICO`.
+- `urgency` (opcional): `BAIXA`, `MEDIA`, `ALTA`, `MUITO_ALTA`, `CRITICA`.
+- `location`: mínimo 3 caracteres.
+- `contact_phone`: mínimo 8 dígitos.
+
+Teste de Criação
+- Use: `curl -s -X POST "https://<tunel>/api/create-ticket-complete" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Teste","description":"Texto válido","category":"SOFTWARE","impact":"MEDIO","location":"SETOR","contact_phone":"51999999999"}'`
+ - Esperado: `201` e `ticket_id` preenchido (com GLPI configurado).
+
+Checklist Final
+- URL correta e com HTTPS (se túnel).
+- Método `POST`.
+- Headers `Content-Type` e `Accept` configurados.
+- Corpo JSON usando conteúdo dinâmico (sem aspas nas expressões).
+- Tipo de resposta: `JSON`, salvo em variável.
+
+Sinais de Erro Comum
+- Erro 400 com `Expressões PowerFx não processadas`: revisar uso do botão de conteúdo dinâmico e remover aspas.
+- Erro 400 `Descrição muito curta`: aumentar detalhes ou complementar com local/telefone/categoria.
+- Erro 500 `Configurações do GLPI`: conferir `.env` com `GLPI_URL`, `GLPI_APP_TOKEN`, `GLPI_USER_TOKEN`.
+
+Referências
+- `COPILOT_STUDIO_STEP_BY_STEP.md` (passo a passo no Studio)
+- `CORRECOES_POWERFX.md` (boas práticas de PowerFx)
+- `README.md` (endpoints e teste rápido)
+
 ## Visão Geral
 
 Este guia explica detalhadamente como configurar requisições HTTP em tópicos do Microsoft Copilot Studio, baseado na documentação oficial e nas melhores práticas.

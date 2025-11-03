@@ -15,9 +15,9 @@ Sistema integrado entre Microsoft Copilot Studio e GLPI para criação automatiz
 - 📝 **Logging Estruturado**: Logs detalhados para debugging
 - 🎯 **Mapeamento de Categorias**: Interface user-friendly para categorias GLPI
 
-## 🚀 Configuração Rápida
+## 🚀 Guia Rápido (Essencial)
 
-### 1. Configurar Ambiente
+### 1) Configurar Ambiente
 
 ```bash
 # Copiar arquivo de exemplo
@@ -29,21 +29,23 @@ GLPI_APP_TOKEN=seu_app_token_aqui
 GLPI_USER_TOKEN=seu_user_token_aqui
 ```
 
-### 2. Instalar e Executar
+### 2) Instalar e Executar
 
 ```bash
 # Instalar dependências
 pip install -r requirements.txt
 
-# Executar API
+# Executar API (modo simples)
 python app.py
+
+# Alternativa (modo recomendado)
+python -m scripts.run_server
 ```
 
-### 3. Configurar Copilot Studio
+### 3) Integração com Copilot (opcional)
 
-1. Importe o arquivo `copilot-create-ticket-config.yaml`
-2. Configure a URL da API: `http://localhost:5000/api/create-ticket-complete`
-3. Teste com: "Preciso criar um chamado"
+- Este repositório não inclui um agente Copilot; a API está pronta para consumo por qualquer cliente HTTP.
+- Se integrar com Copilot, use a URL `http://localhost:5000/api/create-ticket-complete`, método `POST`, e `Content-Type: application/json`.
 
 ## 📁 Estrutura do Projeto
 
@@ -75,9 +77,10 @@ Cria um ticket completo no GLPI.
 {
   "title": "Título do ticket",
   "description": "Descrição do problema",
-  "category": "INCIDENTE",
+  "category": "SEGURANCA",
   "impact": "MEDIO",
-  "location": "Local do problema"
+  "location": "Local do problema",
+  "contact_phone": "51999999999"
 }
 ```
 
@@ -88,12 +91,17 @@ curl -X POST http://localhost:5000/api/create-ticket-complete \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Teste",
-    "description": "Teste de criação de ticket",
-    "category": "INCIDENTE",
+    "description": "Descrição clara com mais de cinquenta caracteres para validação.",
+    "category": "SEGURANCA",
     "impact": "MEDIO",
-    "location": "Escritório"
+    "location": "Escritório",
+    "contact_phone": "51999999999"
   }'
 ```
+
+## ℹ️ Observações
+- Logs não são versionados (`.gitignore` inclui `*.log`).
+- Scripts de inicialização legados foram removidos; use `python app.py` ou `python -m scripts.run_server`.
 
 ## 🔍 Troubleshooting
 
