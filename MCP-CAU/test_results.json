@@ -1,0 +1,107 @@
+{
+  "timestamp": "2025-11-03T16:59:31.780422",
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "tests": [
+    {
+      "name": "Health Check",
+      "passed": true,
+      "details": "GLPI configurado e funcionando",
+      "timestamp": "2025-11-03T16:58:57.089972"
+    },
+    {
+      "name": "Validação: Dados vazios",
+      "passed": true,
+      "details": "Campo obrigatório detectado corretamente",
+      "timestamp": "2025-11-03T16:58:59.142914"
+    },
+    {
+      "name": "Validação: Sem descrição",
+      "passed": true,
+      "details": "Campo obrigatório detectado corretamente",
+      "timestamp": "2025-11-03T16:59:01.184102"
+    },
+    {
+      "name": "Validação: Sem título",
+      "passed": true,
+      "details": "Campo obrigatório detectado corretamente",
+      "timestamp": "2025-11-03T16:59:03.230940"
+    },
+    {
+      "name": "Validação: Sem categoria",
+      "passed": true,
+      "details": "Campo obrigatório detectado corretamente",
+      "timestamp": "2025-11-03T16:59:05.275415"
+    },
+    {
+      "name": "Validação: Sem impacto",
+      "passed": true,
+      "details": "Campo obrigatório detectado corretamente",
+      "timestamp": "2025-11-03T16:59:07.313820"
+    },
+    {
+      "name": "Validação: Sem localização",
+      "passed": true,
+      "details": "Campo obrigatório detectado corretamente",
+      "timestamp": "2025-11-03T16:59:09.356260"
+    },
+    {
+      "name": "Criação de Ticket Válido",
+      "passed": true,
+      "details": "Ticket ID: 11106, Trace ID: e7ee6cd1",
+      "timestamp": "2025-11-03T16:59:11.651227"
+    },
+    {
+      "name": "Formato de Resposta",
+      "passed": true,
+      "details": "Todos os campos obrigatórios presentes",
+      "timestamp": "2025-11-03T16:59:14.000280"
+    },
+    {
+      "name": "Suporte a Encoding UTF-8",
+      "passed": true,
+      "details": "Caracteres especiais processados corretamente",
+      "timestamp": "2025-11-03T16:59:16.398179"
+    },
+    {
+      "name": "Mapeamento Impacto Alto",
+      "passed": true,
+      "details": "Impacto 'ALTO' processado corretamente",
+      "timestamp": "2025-11-03T16:59:18.701713"
+    },
+    {
+      "name": "Mapeamento Impacto Médio",
+      "passed": true,
+      "details": "Impacto 'MEDIO' processado corretamente",
+      "timestamp": "2025-11-03T16:59:22.117487"
+    },
+    {
+      "name": "Mapeamento Impacto Baixo",
+      "passed": true,
+      "details": "Impacto 'BAIXO' processado corretamente",
+      "timestamp": "2025-11-03T16:59:24.466945"
+    },
+    {
+      "name": "Mapeamento Impacto Crítico",
+      "passed": true,
+      "details": "Impacto 'CRITICO' processado corretamente",
+      "timestamp": "2025-11-03T16:59:26.786716"
+    },
+    {
+      "name": "Requisições Concorrentes",
+      "passed": true,
+      "details": "Todas as 5 requisições foram processadas com sucesso",
+      "timestamp": "2025-11-03T16:59:29.731666"
+    },
+    {
+      "name": "Lookup sem email",
+      "passed": true,
+      "details": "Validação de parâmetro funcionou",
+      "timestamp": "2025-11-03T16:59:31.778663"
+    }
+  ]
+}

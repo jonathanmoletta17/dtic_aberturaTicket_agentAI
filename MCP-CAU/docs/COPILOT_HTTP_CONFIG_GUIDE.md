@@ -8,7 +8,7 @@ Pré-requisitos
 - Headers: `Content-Type: application/json; charset=utf-8` e `Accept: application/json`.
 
 URL e Método
-- URL: `https://<seu-tunel>.loca.lt/api/create-ticket-complete`
+- URL: `https://<seu-tunel>/api/create-ticket-complete` (ex.: `https://<subdominio>.ngrok.io` ou `https://<subdominio>.trycloudflare.com`)
 - Método: `POST`
  - Teste direto sem parâmetros extras.
 
@@ -69,6 +69,9 @@ Sinais de Erro Comum
 - Erro 400 com `Expressões PowerFx não processadas`: revisar uso do botão de conteúdo dinâmico e remover aspas.
 - Erro 400 `Descrição muito curta`: aumentar detalhes ou complementar com local/telefone/categoria.
 - Erro 500 `Configurações do GLPI`: conferir `.env` com `GLPI_URL`, `GLPI_APP_TOKEN`, `GLPI_USER_TOKEN`.
+
+Nota
+- O Copilot requer `https://`. Não use `http://localhost` diretamente; utilize um túnel HTTPS (ngrok/cloudflared) e substitua `<seu-tunel>` pelo URL gerado.
 
 Referências
 - `COPILOT_STUDIO_STEP_BY_STEP.md` (passo a passo no Studio)

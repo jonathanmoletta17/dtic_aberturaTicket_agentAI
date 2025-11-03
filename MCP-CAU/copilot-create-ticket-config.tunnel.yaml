@@ -1,5 +1,5 @@
 kind: AdaptiveDialog
-modelDescription: Tópico para criação de chamados e tickets de suporte técnico no sistema GLPI
+modelDescription: Tópico para criação de chamados via túnel HTTPS para a API local
 beginDialog:
   kind: OnRecognizedIntent
   id: main
@@ -89,21 +89,24 @@ beginDialog:
     - kind: HttpRequestAction
       id: CreateTicketRequest
       method: Post
-      url: https://true-planes-brake.loca.lt/api/create-ticket-complete
+      url: https://concentrate-retrieved-farmer-feeling.trycloudflare.com/api/create-ticket-complete
       headers:
         Content-Type: application/json
 
       body:
         kind: JsonRequestContent
-        content:
-          category: INCIDENTE
-          contact_phone: =Topic.contact_phone
-          description: =Topic.description
-          impact: =if(empty(Topic.impact), 'MEDIO', Topic.impact)
-          location: =Topic.location
-          title: Chamado via Copilot Studio
+        content: |-
+          ={
+            title: "Chamado: " & Text(Topic.description),
+            description: Topic.description,
+            category: "SEGURANCA",
+            impact: If(IsBlank(Topic.impact), "MEDIO", Upper(Topic.impact)),
+            location: Topic.location,
+            contact_phone: Topic.contact_phone
+          }
 
       response: Topic.ticketResult
+      responseSchema: Any
 
     - kind: ConditionGroup
       id: CheckTicketCreation
@@ -117,7 +120,7 @@ beginDialog:
                 ✅ **Chamado criado com sucesso!**
 
                 🎫 **Número do Chamado:** #{Topic.ticketResult.ticket_id}
-                📋 **Categoria:** {Topic.ticketResult.category}
+                📋 **Categoria:** {Topic.ticketResult.details.category}
                 📝 **Descrição:** {Topic.description}
                 ⚡ **Impacto:** {Topic.impact}
                 📍 **Localização:** {Topic.location}

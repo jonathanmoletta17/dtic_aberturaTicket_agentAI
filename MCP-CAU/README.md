@@ -47,6 +47,17 @@ python -m scripts.run_server
 - Este repositório não inclui um agente Copilot; a API está pronta para consumo por qualquer cliente HTTP.
 - Se integrar com Copilot, use a URL `http://localhost:5000/api/create-ticket-complete`, método `POST`, e `Content-Type: application/json`.
 
+## 🔒 Túnel HTTPS (Copilot)
+
+- Por padrão, o Copilot exige `https://`. Para acessar a API local, inicie um túnel HTTPS e use o YAML de túnel.
+- Opções comuns:
+  - `cloudflared`: `cloudflared tunnel --url http://localhost:5000` → copie `https://<subdominio>.trycloudflare.com`
+  - `ngrok`: `ngrok config add-authtoken <SEU_TOKEN>` e `ngrok http 5000` → copie `https://<subdominio>.ngrok.io`
+
+- Importar no Copilot Studio o arquivo `copilot-create-ticket-config.tunnel.yaml` e substituir `https://REPLACE_WITH_TUNNEL` pelo URL gerado do túnel.
+- Headers: `Content-Type: application/json`. Corpo: conforme exemplo de payload abaixo.
+- Evite usar `http://localhost` no Copilot; use sempre o URL público `https://` do túnel.
+
 ## 📁 Estrutura do Projeto
 
 ```
@@ -80,7 +91,31 @@ Cria um ticket completo no GLPI.
   "category": "SEGURANCA",
   "impact": "MEDIO",
   "location": "Local do problema",
-  "contact_phone": "51999999999"
+  "contact_phone": "51999999999",
+  "requester_email": "usuario@empresa.com" // opcional: define requerente do ticket
+}
+```
+
+### `GET /api/glpi-user-by-email`
+Busca usuário no GLPI pelo e‑mail.
+
+**Uso:**
+```bash
+curl "http://localhost:5000/api/glpi-user-by-email?email=usuario@empresa.com"
+```
+
+**Resposta:**
+```json
+{
+  "sucesso": true,
+  "query_email": "usuario@empresa.com",
+  "resultado": {
+    "found": true,
+    "user_id": 123,
+    "name": "Usuário Exemplo",
+    "login": "u.exemplo",
+    "email": "usuario@empresa.com"
+  }
 }
 ```
 

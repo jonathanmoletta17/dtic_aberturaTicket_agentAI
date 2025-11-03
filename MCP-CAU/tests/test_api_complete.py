@@ -295,6 +295,21 @@ def test_concurrent_requests(results):
     else:
         results.add_test("Requisições Concorrentes", False, f"Sucesso: {successful}, Falhas: {failed}")
 
+def test_lookup_endpoint_validation(results):
+    """Teste 8: Validação do endpoint de lookup sem parâmetro 'email'"""
+    try:
+        response = requests.get(f"{BASE_URL}/api/glpi-user-by-email", timeout=10)
+        if response.status_code == 400:
+            data = response.json()
+            if not data.get('sucesso') and 'email' in (data.get('error','') + data.get('erro','')):
+                results.add_test("Lookup sem email", True, "Validação de parâmetro funcionou")
+            else:
+                results.add_test("Lookup sem email", False, f"Resposta inesperada: {data}")
+        else:
+            results.add_test("Lookup sem email", False, f"Status inesperado: {response.status_code}")
+    except Exception as e:
+        results.add_test("Lookup sem email", False, f"Erro: {str(e)}")
+
 def main():
     print("Iniciando testes automatizados da API...")
     print(f"URL Base: {BASE_URL}")
@@ -324,6 +339,9 @@ def main():
     
     print("7. Testando requisições concorrentes...")
     test_concurrent_requests(results)
+    
+    print("8. Testando endpoint de lookup de usuário...")
+    test_lookup_endpoint_validation(results)
     
     # Imprimir resumo
     results.print_summary()

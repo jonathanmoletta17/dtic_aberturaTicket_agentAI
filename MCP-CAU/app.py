@@ -47,6 +47,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ========== MIDDLEWARE PARA HEADERS PADRONIZADOS ==========
+@app.before_request
+def ensure_json_headers():
+    """
+    Middleware que garante headers padronizados para requisições JSON.
+    
+    Funcionalidades:
+    - Adiciona Content-Type se ausente em métodos POST/PUT/PATCH
+    - Adiciona Accept se ausente
+    - Registra informações detalhadas da requisição
+    """
+    trace_id = str(uuid.uuid4())[:8]
+    
+    # Log detalhado da requisição
+    logger.info(f"[{trace_id}] {request.method} {request.path}")
+    logger.info(f"[{trace_id}] Headers: {dict(request.headers)}")
+    logger.info(f"[{trace_id}] Content-Type: {request.headers.get('Content-Type', 'ausente')}")
+    logger.info(f"[{trace_id}] User-Agent: {request.headers.get('User-Agent', 'ausente')}")
+    
+    # Para métodos que enviam dados, garantir headers corretos
+    if request.method in ['POST', 'PUT', 'PATCH']:
+        # Verificar se há dados no corpo
+        if request.get_data():
+            content_type = request.headers.get('Content-Type', '')
+            
+            # Se não há Content-Type ou está incorreto, sugerir correção
+            if not content_type:
+                logger.warning(f"[{trace_id}] Content-Type ausente para {request.method}")
+            elif not content_type.startswith('application/json'):
+                logger.warning(f"[{trace_id}] Content-Type não é JSON: {content_type}")
+
 # Configurações do GLPI obtidas do ambiente
 GLPI_URL = os.getenv("GLPI_URL")
 GLPI_APP_TOKEN = os.getenv("GLPI_APP_TOKEN")
@@ -175,6 +206,122 @@ def autenticar_glpi():
         logger.error(f"Erro na autenticação GLPI: {str(e)}")
         raise
 
+def buscar_usuario_por_email(email):
+    """Busca usuário do GLPI pelo e-mail e retorna dados essenciais.
+
+    Retorna dict com chaves: found (bool), user_id (int|None), name, login, email, raw.
+    """
+    if not email or not isinstance(email, str):
+        raise ValueError("E-mail inválido para busca no GLPI")
+
+    headers = autenticar_glpi()
+    email_normalizado = email.strip()
+
+    # Endpoint de busca genérica por usuários no GLPI
+    url_search = f"{GLPI_URL}/search/User"
+
+    # Critério padrão: igualdade exata por e-mail
+    params_equals = {
+        "criteria[0][field]": 5,            # Campo 'email' (instalações GLPI comuns)
+        "criteria[0][searchtype]": "equals",
+        "criteria[0][value]": email_normalizado,
+        "forcedisplay[0]": 1,               # id
+        "forcedisplay[1]": 2,               # name
+        "forcedisplay[2]": 5,               # email
+        "forcedisplay[3]": 9                # login
+    }
+    # Fallback: contém e-mail (caso igualdade não retorne)
+    params_contains = {
+        "criteria[0][field]": 5,
+        "criteria[0][searchtype]": "contains",
+        "criteria[0][value]": email_normalizado,
+        "forcedisplay[0]": 1,
+        "forcedisplay[1]": 2,
+        "forcedisplay[2]": 5,
+        "forcedisplay[3]": 9
+    }
+
+    try:
+        # 1) Tenta igualdade exata
+        resp = requests.get(url_search, headers=headers, params=params_equals, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Estruturas possíveis: 'data' (GLPI 10) ou 'rows' (variações)
+        rows = []
+        if isinstance(data, dict):
+            if isinstance(data.get("data"), list):
+                rows = data.get("data")
+            elif isinstance(data.get("rows"), list):
+                rows = data.get("rows")
+
+        # 2) Se não achou nada, tenta busca por "contains"
+        if not rows:
+            resp2 = requests.get(url_search, headers=headers, params=params_contains, timeout=10)
+            resp2.raise_for_status()
+            data2 = resp2.json()
+            if isinstance(data2, dict):
+                if isinstance(data2.get("data"), list):
+                    rows = data2.get("data")
+                elif isinstance(data2.get("rows"), list):
+                    rows = data2.get("rows")
+            # Mantém o último raw para depuração
+            if rows:
+                data = data2
+
+        user_info = None
+        if rows:
+            # Pega a primeira correspondência
+            item = rows[0]
+            # Algumas instalações retornam dict com chaves semânticas;
+            # outras retornam chaves numéricas ("1","2","5","9") conforme forcedisplay.
+            if isinstance(item, dict):
+                # Tenta primeiro pelas chaves semânticas
+                uid = item.get("id") or item.get("users_id")
+                uname = item.get("name") or item.get("realname")
+                ulogin = item.get("login") or item.get("user_name")
+                uemail = item.get("email") or item.get("user_email")
+
+                # Se veio no formato numérico, usa mapeamento dos forcedisplay
+                if uid is None and any(k in item for k in ["1","2","5","9"]):
+                    # Pelo raw observado: "2" parece ser id, "1" nome, "5" email, "9" login
+                    try:
+                        uid = item.get("2") or uid
+                    except Exception:
+                        uid = uid
+                    uname = uname or item.get("1") or item.get("9")
+                    uemail = uemail or item.get("5")
+                    ulogin = ulogin or item.get("9") or item.get("1")
+
+                user_info = {
+                    "id": uid,
+                    "name": uname,
+                    "login": ulogin,
+                    "email": uemail,
+                }
+            elif isinstance(item, list):
+                # Tentativa best-effort: identificar posições comuns
+                # id geralmente primeiro, name segundo, email pode vir em outra posição
+                user_info = {
+                    "id": item[0] if len(item) > 0 else None,
+                    "name": item[1] if len(item) > 1 else None,
+                    "email": item[2] if len(item) > 2 else None,
+                    "login": item[3] if len(item) > 3 else None,
+                }
+
+        found = bool(user_info and user_info.get("id"))
+        return {
+            "found": found,
+            "user_id": user_info.get("id") if user_info else None,
+            "name": user_info.get("name") if user_info else None,
+            "login": user_info.get("login") if user_info else None,
+            "email": user_info.get("email") if user_info else email_normalizado,
+            "raw": data,
+        }
+    except Exception as e:
+        logger.error(f"Erro ao buscar usuário por e-mail no GLPI: {str(e)}")
+        raise
+
 def criar_ticket_glpi(dados):
     """Cria ticket no GLPI"""
     try:
@@ -229,6 +376,11 @@ def criar_ticket_glpi(dados):
                 "entities_id": 1
             }
         }
+
+        # Se houver usuário do requerente resolvido via e-mail, adiciona no payload
+        requester_user_id = dados.get("users_id_recipient")
+        if requester_user_id:
+            payload["input"]["users_id_recipient"] = requester_user_id
         
         logger.info(f"=== PAYLOAD COMPLETO PARA GLPI ===")
         logger.info(f"Payload: {payload}")
@@ -293,7 +445,8 @@ def index():
         "version": "1.0",
         "endpoints": {
             "health": "/api/health",
-            "create_ticket": "/api/create-ticket-complete"
+            "create_ticket": "/api/create-ticket-complete",
+            "user_by_email": "/api/glpi-user-by-email"
         }
     })
 
@@ -329,6 +482,37 @@ def health_check():
             "error": str(e)
         }), 500
 
+@app.route("/api/glpi-user-by-email", methods=["GET"])
+def glpi_user_by_email():
+    """Busca usuário do GLPI por e-mail (GET ?email=)."""
+    try:
+        email = request.args.get("email") or request.args.get("e") or request.args.get("mail")
+        if not email or "@" not in email:
+            return jsonify({
+                "sucesso": False,
+                "success": False,
+                "error": "Parâmetro 'email' é obrigatório",
+                "erro": "Parâmetro 'email' é obrigatório"
+            }), 400
+
+        # Tenta buscar usuário
+        result = buscar_usuario_por_email(email)
+        return jsonify({
+            "sucesso": True,
+            "success": True,
+            "query_email": email,
+            "resultado": result
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Erro no lookup de usuário por e-mail: {str(e)}")
+        return jsonify({
+            "sucesso": False,
+            "success": False,
+            "error": str(e),
+            "erro": str(e)
+        }), 500
+
 @app.route("/api/create-ticket-complete", methods=["POST"])
 def create_ticket_complete():
     """
@@ -349,18 +533,75 @@ def create_ticket_complete():
         logger.debug(f"[{trace_id}] Headers: {dict(request.headers)}")
         logger.debug(f"[{trace_id}] Raw data: {request.get_data()}")
 
-        # Processa dados JSON da requisição de forma simples e objetiva
-        data = request.get_json(force=True, silent=True)
-        logger.debug(f"[{trace_id}] Dados recebidos via get_json: {data}")
-        if not isinstance(data, dict):
-            logger.error(f"[{trace_id}] JSON inválido ou ausente")
+        # ========== VALIDAÇÃO JSON MELHORADA ==========
+        
+        # 1. Verificar Content-Type
+        content_type = request.headers.get('Content-Type', '')
+        if not content_type.startswith('application/json'):
+            logger.warning(f"[{trace_id}] Content-Type incorreto: {content_type}")
             return jsonify({
                 "sucesso": False,
                 "success": False,
-                "error": "Erro no formato JSON: corpo ausente ou inválido",
-                "erro": "Erro no formato JSON: corpo ausente ou inválido",
+                "error": "Content-Type deve ser 'application/json'",
+                "erro": "Content-Type deve ser 'application/json'",
+                "details": {
+                    "received_content_type": content_type,
+                    "expected_content_type": "application/json"
+                },
                 "trace_id": trace_id
             }), 400
+        
+        # 2. Verificar se há dados no corpo
+        raw_data = request.get_data()
+        if not raw_data:
+            logger.error(f"[{trace_id}] Corpo da requisição vazio")
+            return jsonify({
+                "sucesso": False,
+                "success": False,
+                "error": "Corpo da requisição vazio",
+                "erro": "Corpo da requisição vazio",
+                "trace_id": trace_id
+            }), 400
+        
+        # 3. Tentar parsear JSON com tratamento de erro detalhado
+        try:
+            data = request.get_json(force=True, silent=False)
+        except Exception as json_error:
+            logger.error(f"[{trace_id}] Erro ao parsear JSON: {str(json_error)}")
+            return jsonify({
+                "sucesso": False,
+                "success": False,
+                "error": f"JSON malformado: {str(json_error)}",
+                "erro": f"JSON malformado: {str(json_error)}",
+                "details": {
+                    "raw_data_preview": raw_data.decode('utf-8', errors='ignore')[:200] + "..." if len(raw_data) > 200 else raw_data.decode('utf-8', errors='ignore')
+                },
+                "trace_id": trace_id
+            }), 400
+        
+        # 4. Verificar se o JSON foi parseado corretamente
+        if data is None:
+            logger.error(f"[{trace_id}] JSON parseado como None")
+            return jsonify({
+                "sucesso": False,
+                "success": False,
+                "error": "JSON resultou em valor nulo",
+                "erro": "JSON resultou em valor nulo",
+                "trace_id": trace_id
+            }), 400
+        
+        # 5. Verificar se é um dicionário válido
+        if not isinstance(data, dict):
+            logger.error(f"[{trace_id}] JSON não é um objeto válido: {type(data)}")
+            return jsonify({
+                "sucesso": False,
+                "success": False,
+                "error": f"JSON deve ser um objeto, recebido: {type(data).__name__}",
+                "erro": f"JSON deve ser um objeto, recebido: {type(data).__name__}",
+                "trace_id": trace_id
+            }), 400
+        
+        logger.debug(f"[{trace_id}] Dados recebidos via get_json: {data}")
         
         # Validação básica de dados
         if not data:
@@ -424,6 +665,7 @@ def create_ticket_complete():
         impact = data.get('impact') or data.get('impacto')
         location = data.get('location') or data.get('localizacao')
         contact_phone = data.get('contact_phone') or data.get('telefone_contato') or data.get('telefone')
+        requester_email = data.get('requester_email') or data.get('email') or data.get('usuario_email')
         
         # Mapeia categoria user-friendly para categoria GLPI
         glpi_category = mapear_categoria(category)
@@ -437,7 +679,8 @@ def create_ticket_complete():
             'category_user_friendly': category,  # Mantém categoria original para logs
             'impact': impact,
             'location': location,
-            'contact_phone': contact_phone
+            'contact_phone': contact_phone,
+            'requester_email': requester_email
         }
 
         # ========== VALIDAÇÕES DA FASE 1 - BACKUP NO BACKEND ==========
@@ -558,6 +801,16 @@ def create_ticket_complete():
                 "trace_id": trace_id
             }), 500
         
+        # Se houver e-mail do requerente, tenta resolver usuário no GLPI
+        requester_lookup = None
+        if requester_email:
+            try:
+                requester_lookup = buscar_usuario_por_email(requester_email)
+                if requester_lookup.get("found") and requester_lookup.get("user_id"):
+                    normalized_data["users_id_recipient"] = requester_lookup["user_id"]
+            except Exception as e:
+                logger.warning(f"[{trace_id}] Falha ao buscar usuário por e-mail '{requester_email}': {e}")
+
         # Cria ticket no GLPI
         ticket_id = criar_ticket_glpi(normalized_data)
         
@@ -574,7 +827,14 @@ def create_ticket_complete():
                 "title": title,
                 "category": category,
                 "impact": impact,
-                "location": location
+                "location": location,
+                "requester_email": requester_email,
+                "requester": {
+                    "found": bool(requester_lookup and requester_lookup.get("found")),
+                    "user_id": requester_lookup.get("user_id") if requester_lookup else None,
+                    "name": requester_lookup.get("name") if requester_lookup else None,
+                    "login": requester_lookup.get("login") if requester_lookup else None
+                } if requester_email else None
             }
         }
         
