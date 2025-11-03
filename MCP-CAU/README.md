@@ -63,7 +63,7 @@ python -m scripts.run_server
 ```
 MCP-CAU/
 ├── app.py                              # API Flask principal
-├── copilot-create-ticket-config.yaml   # Configuração do Copilot Studio
+├── copilot-create-ticket-config.tunnel.yaml   # Configuração Copilot via túnel HTTPS
 ├── requirements.txt                     # Dependências Python
 ├── .env.example                        # Exemplo de configuração
 ├── README.md                           # Este arquivo
@@ -95,6 +95,8 @@ Cria um ticket completo no GLPI.
   "requester_email": "usuario@empresa.com" // opcional: define requerente do ticket
 }
 ```
+
+Observação: o tópico "copilot-create-ticket-product.yaml" agora coleta o e‑mail do usuário logo no início e envia `requester_email` automaticamente para vincular o requerente no GLPI.
 
 ### `GET /api/glpi-user-by-email`
 Busca usuário no GLPI pelo e‑mail.

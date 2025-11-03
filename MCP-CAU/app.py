@@ -381,6 +381,12 @@ def criar_ticket_glpi(dados):
         requester_user_id = dados.get("users_id_recipient")
         if requester_user_id:
             payload["input"]["users_id_recipient"] = requester_user_id
+
+        # Campo correto para definir o requerente no GLPI (ator tipo Requester)
+        # Referência: API GLPI requer chave com underscore _users_id_requester
+        requester_actor_id = dados.get("users_id_requester") or dados.get("users_id_recipient")
+        if requester_actor_id:
+            payload["input"]["_users_id_requester"] = requester_actor_id
         
         logger.info(f"=== PAYLOAD COMPLETO PARA GLPI ===")
         logger.info(f"Payload: {payload}")
@@ -807,7 +813,9 @@ def create_ticket_complete():
             try:
                 requester_lookup = buscar_usuario_por_email(requester_email)
                 if requester_lookup.get("found") and requester_lookup.get("user_id"):
+                    # Define tanto recipient quanto requester para máxima compatibilidade
                     normalized_data["users_id_recipient"] = requester_lookup["user_id"]
+                    normalized_data["users_id_requester"] = requester_lookup["user_id"]
             except Exception as e:
                 logger.warning(f"[{trace_id}] Falha ao buscar usuário por e-mail '{requester_email}': {e}")
 

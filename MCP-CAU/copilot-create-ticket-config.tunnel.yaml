@@ -102,7 +102,8 @@ beginDialog:
             category: "SEGURANCA",
             impact: If(IsBlank(Topic.impact), "MEDIO", Upper(Topic.impact)),
             location: Topic.location,
-            contact_phone: Topic.contact_phone
+            contact_phone: Topic.contact_phone,
+            requester_email: Topic.user_email
           }
 
       response: Topic.ticketResult
