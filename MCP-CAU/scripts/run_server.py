@@ -8,7 +8,7 @@ import os
 import sys
 import signal
 import logging
-from app import app
+from app_core import create_app
 
 # Configuração de logging para produção
 logging.basicConfig(
@@ -38,10 +38,11 @@ def main():
         logger.info(f"Python: {sys.version}")
         logger.info(f"Diretório: {os.getcwd()}")
         
-        # Configurações de produção
+        # Cria app e configura para produção
+        app = create_app()
         app.config['DEBUG'] = False
         app.config['TESTING'] = False
-        
+
         # Inicia o servidor
         logger.info("Servidor iniciando na porta 5000...")
         app.run(

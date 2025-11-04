@@ -1,3 +1,23 @@
+# Ambiente
+.env
+.env.*
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Logs e artefatos locais
+*.log
+health_monitor.log
+test_results.json
+
+# IDE/Editor
+.vscode/
+.idea/
+
 # Runtime logs
 *.log
 

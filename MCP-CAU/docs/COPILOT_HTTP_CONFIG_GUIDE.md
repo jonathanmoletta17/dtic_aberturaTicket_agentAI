@@ -146,13 +146,13 @@ errorHandling:
   saveErrorResponseAs: Topic.ErrorResponse
 ```
 
-## Configurações Específicas para Nosso Projeto
+## Configurações Específicas para Nosso Projeto (corrigido)
 
 ### 1. Endpoint de Health Check
 ```yaml
 - kind: HttpRequestAction
   id: checkApiHealth
-  url: "http://localhost:5000/api/model-health"
+  url: "http://localhost:5000/api/health"
   method: GET
   headers:
     Accept: "application/json"
@@ -165,16 +165,21 @@ errorHandling:
 ```yaml
 - kind: HttpRequestAction
   id: createTicket
-  url: "http://localhost:5000/api/create-ticket-from-text"
+  url: "http://localhost:5000/api/create-ticket-complete"
   method: POST
   headers:
-    Content-Type: "application/json"
+    Content-Type: "application/json; charset=utf-8"
     Accept: "application/json"
   body:
     contentType: JSON
     content: |
       {
-        "text": "${Topic.UserMessage}"
+        "title": "Chamado via Copilot Studio",
+        "description": "${Topic.description}",
+        "category": "${Topic.category}",
+        "impact": "${Topic.impact}",
+        "location": "${Topic.location}",
+        "contact_phone": "${Topic.contact_phone}"
       }
   timeout: 60000
   responseDataType: JSON

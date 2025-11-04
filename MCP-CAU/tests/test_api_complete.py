@@ -106,7 +106,7 @@ def test_valid_ticket_creation(results):
     ticket_data = {
         "title": f"Teste Automatizado - {datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "description": "Este é um ticket de teste criado automaticamente para validar o sistema. Contém caracteres especiais: áéíóú çñü",
-        "category": "HARDWARE",
+        "category": "HARDWARE_COMPUTADOR",
         "impact": "ALTO",
         "location": "Sala de TI - Andar 3",
         "contact_phone": "(51) 99999-9999"
@@ -146,7 +146,7 @@ def test_response_format(results):
         "description": "Validando formato da resposta",
         "category": "SOFTWARE",
         "impact": "MEDIO",
-        "location": "Teste",
+        "location": "Local de Teste",
         "contact_phone": "(51) 88888-8888"
     }
     

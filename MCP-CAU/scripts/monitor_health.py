@@ -51,7 +51,7 @@ class ServerMonitor:
         try:
             logger.info("Iniciando servidor...")
             self.server_process = subprocess.Popen([
-                sys.executable, "run_server.py"
+                sys.executable, "-m", "scripts.run_server"
             ], cwd=os.getcwd())
             
             # Aguarda um pouco para o servidor inicializar

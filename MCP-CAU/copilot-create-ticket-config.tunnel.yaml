@@ -89,9 +89,10 @@ beginDialog:
     - kind: HttpRequestAction
       id: CreateTicketRequest
       method: Post
-      url: https://concentrate-retrieved-farmer-feeling.trycloudflare.com/api/create-ticket-complete
+      url: https://a4fb783b81d2.ngrok-free.app/api/create-ticket-complete
       headers:
-        Content-Type: application/json
+        Accept: application/json
+        Content-Type: application/json; charset=utf-8
 
       body:
         kind: JsonRequestContent

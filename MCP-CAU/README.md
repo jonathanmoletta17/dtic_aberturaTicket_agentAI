@@ -64,14 +64,16 @@ python -m scripts.run_server
 MCP-CAU/
 ├── app.py                              # API Flask principal
 ├── copilot-create-ticket-config.tunnel.yaml   # Configuração Copilot via túnel HTTPS
+├── copilot-create-ticket-product.yaml         # Tópico completo (produção) para criação de tickets
+├── copilot-get-user-email.yaml                # Tópico para capturar/validar e-mail do usuário
 ├── requirements.txt                     # Dependências Python
 ├── .env.example                        # Exemplo de configuração
+├── .gitignore                          # Ignora logs e artefatos locais
 ├── README.md                           # Este arquivo
 └── docs/                               # Documentação
     ├── SETUP_GUIDE.md                  # Guia de configuração completo
     ├── COPILOT_HTTP_CONFIG_GUIDE.md    # Configuração HTTP detalhada
-    ├── COPILOT_STUDIO_STEP_BY_STEP.md  # Passo a passo Copilot Studio
-    ├── COPILOT_IMPORT_INSTRUCTIONS.md  # Instruções de importação
+    # (Os guias acima cobrem o essencial; arquivos adicionais podem não existir)
     └── GLPI_TROUBLESHOOTING.md         # Solução de problemas GLPI
 ```
 
@@ -96,7 +98,7 @@ Cria um ticket completo no GLPI.
 }
 ```
 
-Observação: o tópico "copilot-create-ticket-product.yaml" agora coleta o e‑mail do usuário logo no início e envia `requester_email` automaticamente para vincular o requerente no GLPI.
+Observação: o tópico `copilot-create-ticket-product.yaml` coleta o e‑mail do usuário logo no início e envia `requester_email` automaticamente para vincular o requerente no GLPI.
 
 ### `GET /api/glpi-user-by-email`
 Busca usuário no GLPI pelo e‑mail.
