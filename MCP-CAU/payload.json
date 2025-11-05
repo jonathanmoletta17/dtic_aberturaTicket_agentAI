@@ -1,9 +1,0 @@
-﻿{
-    "description":  "Minha estação de trabalho não acessa o sistema desde ontem; já reiniciei, limpei cache e recebo erro de autenticação. Preciso de suporte.",
-    "location":  "Escritório TI",
-    "requester_email":  "jonathan@example.com",
-    "contact_phone":  "51999999999",
-    "category":  "SEGURANCA",
-    "title":  "Teste  Chamado via API",
-    "impact":  "MEDIO"
-}

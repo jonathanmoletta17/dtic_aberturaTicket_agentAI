@@ -17,16 +17,32 @@ GLPI_APP_TOKEN=seu_app_token_aqui
 GLPI_USER_TOKEN=seu_user_token_aqui
 ```
 
-### 2. Instalar Dependências
+### 2. Criar e usar ambiente virtual (recomendado)
 
+Windows PowerShell:
+```powershell
+python -m venv AberturaChamadoAI\.venv
+AberturaChamadoAI\.venv\Scripts\Activate.ps1
+pip install -r AberturaChamadoAI\requirements.txt
+```
+
+Linux/macOS:
 ```bash
-pip install -r requirements.txt
+python -m venv AberturaChamadoAI/.venv
+source AberturaChamadoAI/.venv/bin/activate
+pip install -r AberturaChamadoAI/requirements.txt
 ```
 
 ### 3. Executar a API
 
+Modo simples:
 ```bash
-python app.py
+python -m AberturaChamadoAI.app
+```
+
+Modo recomendado (script de servidor):
+```bash
+python -m AberturaChamadoAI.scripts.run_server
 ```
 
 A API estará disponível em `http://localhost:5000`

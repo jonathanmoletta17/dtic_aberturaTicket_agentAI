@@ -8,7 +8,7 @@ import os
 import sys
 import signal
 import logging
-from app_core import create_app
+from AberturaChamadoAI.app_core import create_app
 
 # Configuração de logging para produção
 logging.basicConfig(

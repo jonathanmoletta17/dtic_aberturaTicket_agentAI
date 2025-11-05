@@ -1,9 +1,0 @@
-﻿{
-    "description":  "Desde ontem o sistema não autentica meu usuário; já reiniciei, troquei senha e limpei cache, mas continuo com erro de credenciais ao acessar o módulo de processos.",
-    "location":  "Escritório TI",
-    "requester_email":  "jonathan-moletta@casacivil.rs.gov.br",
-    "contact_phone":  "51999999999",
-    "category":  "SEGURANCA",
-    "title":  "Teste  Chamado via API (requente real)",
-    "impact":  "MEDIO"
-}

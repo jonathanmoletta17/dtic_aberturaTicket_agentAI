@@ -1,4 +1,4 @@
-from app_core import create_app
+from AberturaChamadoAI.app_core import create_app
 from flask import jsonify
 
 app = create_app()

@@ -21,7 +21,7 @@ Sistema integrado entre Microsoft Copilot Studio e GLPI para criação automatiz
 
 ```bash
 # Copiar arquivo de exemplo
-cp .env.example .env
+cp AberturaChamadoAI/.env.example AberturaChamadoAI/.env
 
 # Editar com suas configurações do GLPI
 GLPI_URL=http://seu-glpi.com/apirest.php
@@ -32,14 +32,18 @@ GLPI_USER_TOKEN=seu_user_token_aqui
 ### 2) Instalar e Executar
 
 ```bash
+# Criar e ativar venv (Windows PowerShell)
+python -m venv AberturaChamadoAI\.venv
+AberturaChamadoAI\.venv\Scripts\Activate.ps1
+
 # Instalar dependências
-pip install -r requirements.txt
+pip install -r AberturaChamadoAI/requirements.txt
 
 # Executar API (modo simples)
-python app.py
+python -m AberturaChamadoAI.app
 
 # Alternativa (modo recomendado)
-python -m scripts.run_server
+python -m AberturaChamadoAI.scripts.run_server
 ```
 
 ### 3) Integração com Copilot (opcional)
@@ -62,19 +66,21 @@ python -m scripts.run_server
 
 ```
 MCP-CAU/
-├── app.py                              # API Flask principal
-├── copilot-create-ticket-config.tunnel.yaml   # Configuração Copilot via túnel HTTPS
-├── copilot-create-ticket-product.yaml         # Tópico completo (produção) para criação de tickets
-├── copilot-get-user-email.yaml                # Tópico para capturar/validar e-mail do usuário
-├── requirements.txt                     # Dependências Python
-├── .env.example                        # Exemplo de configuração
+├── AberturaChamadoAI/                  # Agente GLPI (código, scripts, configs e docs)
+│   ├── app.py                          # Entrypoint da API do agente
+│   ├── app_core/                       # Pacote Flask do agente (rotas, serviços)
+│   ├── scripts/                        # Scripts (run_server, monitor, parsing)
+│   ├── config/                         # YAMLs do Copilot Studio (tópicos)
+│   ├── docs/                           # Documentação específica do agente GLPI
+│   ├── requirements.txt                # Dependências Python do agente
+│   ├── .env.example                    # Exemplo de configuração do agente
+│   └── .env                            # Configuração do agente (não versionado)
+├── docs/                               # Documentação comum (base de conhecimento)
+│   ├── SETUP_GUIDE.md                  # Guia de configuração geral
+│   └── COPILOT_HTTP_CONFIG_GUIDE.md    # Configuração HTTP detalhada
+├── CuidAI/                             # Pasta reservada para outro agente
 ├── .gitignore                          # Ignora logs e artefatos locais
-├── README.md                           # Este arquivo
-└── docs/                               # Documentação
-    ├── SETUP_GUIDE.md                  # Guia de configuração completo
-    ├── COPILOT_HTTP_CONFIG_GUIDE.md    # Configuração HTTP detalhada
-    # (Os guias acima cobrem o essencial; arquivos adicionais podem não existir)
-    └── GLPI_TROUBLESHOOTING.md         # Solução de problemas GLPI
+└── README.md                           # Este arquivo
 ```
 
 ## 🔌 Endpoints da API
@@ -140,7 +146,7 @@ curl -X POST http://localhost:5000/api/create-ticket-complete \
 
 ## ℹ️ Observações
 - Logs não são versionados (`.gitignore` inclui `*.log`).
-- Scripts de inicialização legados foram removidos; use `python app.py` ou `python -m scripts.run_server`.
+- Scripts de inicialização legados foram removidos; use `python -m AberturaChamadoAI.app` ou `python -m AberturaChamadoAI.scripts.run_server`.
 
 ## 🔍 Troubleshooting
 

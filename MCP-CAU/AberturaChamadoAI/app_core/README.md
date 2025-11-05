@@ -1,0 +1,1 @@
+Módulos principais do agente GLPI (Flask app factory, rotas, serviços).

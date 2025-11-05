@@ -1,9 +1,0 @@
-﻿{
-    "description":  "Login falha ao abrir o sistema.",
-    "location":  "Escritório TI",
-    "requester_email":  "jonathan@example.com",
-    "contact_phone":  "51999999999",
-    "category":  "SEGURANCA",
-    "title":  "Teste  Chamado via API",
-    "impact":  "MEDIO"
-}
