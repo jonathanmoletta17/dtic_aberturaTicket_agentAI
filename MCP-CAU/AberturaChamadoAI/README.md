@@ -6,4 +6,4 @@ Estrutura:
 - `app.py` e `app_core/`: aplicação Flask e módulos do agente GLPI
 - `scripts/`: utilitários de execução e monitoramento do agente
 - `config/`: arquivos de configuração do Copilot relacionados ao agente
-- `docs/`: documentação específica do agente GLPI
+- Documentação: consulte a pasta raiz `../docs/` (unificada)

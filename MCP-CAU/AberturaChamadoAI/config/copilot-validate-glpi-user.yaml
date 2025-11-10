@@ -1,0 +1,77 @@
+kind: AdaptiveDialog
+modelDescription: Resolve usuário GLPI pelo email do usuário atual e retorna campos padronizados.
+beginDialog:
+  kind: OnRedirect
+  id: main
+  actions:
+    - kind: HttpRequestAction
+      id: LookupUser
+      method: Get
+      url: = "https://minute-shots-kick-flying.trycloudflare.com/api/glpi-user-by-email?email=" & Trim(System.User.Email)
+      headers:
+        Accept: application/json
+
+      response: Topic.userLookup
+      responseSchema: Any
+
+    - kind: ConditionGroup
+      id: CheckLookup
+      conditions:
+        - id: FoundUser
+          condition: =Boolean(Topic.userLookup.sucesso) && Boolean(Topic.userLookup.resultado.found)
+          actions:
+            - kind: SetVariable
+              id: SetUserId
+              variable: Topic.glpi_user_id
+              value: =Topic.userLookup.resultado.user_id
+
+            - kind: SetVariable
+              id: SetUserLogin
+              variable: Topic.glpi_user_login
+              value: =Topic.userLookup.resultado.login
+
+            - kind: SetVariable
+              id: SetUserName
+              variable: Topic.glpi_user_name
+              value: =Topic.userLookup.resultado.name
+
+            - kind: SetVariable
+              id: SetValidated
+              variable: Topic.user_email_validated
+              value: true
+
+            - kind: SendActivity
+              id: ConfirmFound
+              activity: |
+                ✅ Usuário GLPI encontrado: {Topic.userLookup.resultado.name} ({Topic.userLookup.resultado.login}). Continuaremos com esta informação.
+
+      elseActions:
+        - kind: SetVariable
+          id: SetNotValidated
+          variable: Topic.user_email_validated
+          value: false
+
+        - kind: SendActivity
+          id: NotFound
+          activity: |
+            ❌ Usuário GLPI não encontrado. O chamado será criado sem vínculo de requerente.
+
+    - kind: EndDialog
+      id: end
+
+inputType: {}
+variables:
+  - name: Topic.userLookup
+    type: any
+
+  - name: Topic.glpi_user_id
+    type: number
+
+  - name: Topic.glpi_user_login
+    type: string
+
+  - name: Topic.glpi_user_name
+    type: string
+
+  - name: Topic.user_email_validated
+    type: boolean

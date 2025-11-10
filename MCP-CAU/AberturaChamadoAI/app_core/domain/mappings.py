@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
 IMPACT_MAP = {
-    "BAIXO": 1,
-    "MEDIO": 2,
-    "ALTO": 3,
-    "MUITO_ALTO": 4,
-    "CRITICO": 5,
+    "BAIXO": 2,       # GLPI: Baixa
+    "MEDIO": 3,       # GLPI: Média
+    "ALTO": 4,        # GLPI: Alta
+    "MUITO_ALTO": 5,  # GLPI: Muito alta
+    "CRITICO": 5,     # Mantém no topo
 }
 
 URGENCY_MAP = {
-    "BAIXA": 1,
-    "MEDIA": 2,
-    "ALTA": 3,
-    "MUITO_ALTA": 4,
+    "BAIXA": 2,       # GLPI: Baixa
+    "MEDIA": 3,       # GLPI: Média
+    "ALTA": 4,        # GLPI: Alta
+    "MUITO_ALTA": 5,  # GLPI: Muito alta
     "CRITICA": 5,
 }
 

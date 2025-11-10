@@ -71,13 +71,20 @@ MCP-CAU/
 │   ├── app_core/                       # Pacote Flask do agente (rotas, serviços)
 │   ├── scripts/                        # Scripts (run_server, monitor, parsing)
 │   ├── config/                         # YAMLs do Copilot Studio (tópicos)
-│   ├── docs/                           # Documentação específica do agente GLPI
 │   ├── requirements.txt                # Dependências Python do agente
 │   ├── .env.example                    # Exemplo de configuração do agente
 │   └── .env                            # Configuração do agente (não versionado)
-├── docs/                               # Documentação comum (base de conhecimento)
-│   ├── SETUP_GUIDE.md                  # Guia de configuração geral
-│   └── COPILOT_HTTP_CONFIG_GUIDE.md    # Configuração HTTP detalhada
+├── docs/                               # Documentação unificada do projeto e do agente GLPI
+│   ├── SETUP_GUIDE.md                  # Guia de configuração
+│   ├── COPILOT_HTTP_CONFIG_GUIDE.md    # Configuração HTTP detalhada
+│   ├── GLPI_TROUBLESHOOTING.md         # Solução de problemas GLPI
+│   ├── RUN_SERVERS.md                  # Como executar os servidores
+│   ├── melhorias.md                    # Ideias e melhorias
+│   ├── boas-praticas.md
+│   ├── estrutura-yaml.md
+│   ├── exemplos.md
+│   ├── ferramentas-autor.md
+│   └── importacao-exportacao.md
 ├── CuidAI/                             # Pasta reservada para outro agente
 ├── .gitignore                          # Ignora logs e artefatos locais
 └── README.md                           # Este arquivo
@@ -165,10 +172,12 @@ Para problemas específicos, consulte a documentação em `docs/`.
 
 ## 📚 Documentação
 
-Consulte a pasta `docs/` para guias detalhados:
-- `SETUP_GUIDE.md` - Configuração completa
-- `GLPI_TROUBLESHOOTING.md` - Solução de problemas
-- Outros guias específicos do Copilot Studio
+Consulte a pasta `docs/` (unificada) para guias detalhados:
+- `SETUP_GUIDE.md` — Configuração completa
+- `COPILOT_HTTP_CONFIG_GUIDE.md` — Configuração HTTP do tópico
+- `RUN_SERVERS.md` — Como iniciar o servidor
+- `GLPI_TROUBLESHOOTING.md` — Solução de problemas GLPI
+- `boas-praticas.md`, `estrutura-yaml.md`, `exemplos.md`, `ferramentas-autor.md`, `importacao-exportacao.md` — materiais de apoio
 
 ## 📄 Licença
 

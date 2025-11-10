@@ -146,10 +146,14 @@ def criar_ticket_glpi(dados: Dict[str, Any]) -> int:
     headers = autenticar_glpi()
 
     impact_raw = (dados.get("impact", "MEDIO") or "MEDIO").upper()
-    urgency_raw = (dados.get("urgency", "MEDIA") or "MEDIA").upper()
-    impact = IMPACT_MAP.get(impact_raw, 2)
-    urgency = URGENCY_MAP.get(urgency_raw, 2)
-    priority = min(5, max(1, (impact + urgency) // 2))
+    # Se urgência não for fornecida, usar o mesmo nível do impacto
+    urgency_input = dados.get("urgency")
+    urgency_raw = (urgency_input or impact_raw or "MEDIA").upper()
+    # Defaults alinhados com GLPI (Média)
+    impact = IMPACT_MAP.get(impact_raw, 3)
+    urgency = URGENCY_MAP.get(urgency_raw, 3)
+    # Prioridade como o maior entre impacto e urgência
+    priority = max(impact, urgency)
 
     category_raw = dados.get("category")
     category_id = mapear_categoria(category_raw)

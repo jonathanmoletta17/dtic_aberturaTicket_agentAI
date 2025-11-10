@@ -1,0 +1,129 @@
+kind: AdaptiveDialog
+modelDescription: Tópico de sistema personalizado para "Início da Conversa". Saúda o usuário com cartão adaptável unificado, apresenta o agente e oferece ações rápidas.
+beginDialog:
+  kind: OnConversationStart
+  id: conversationStart
+  actions:
+    - kind: SetVariable
+      id: BuildGreeting
+      variable: Topic.greeting_text
+      value: =If(IsBlank(System.User.DisplayName), "Olá! 👋", "Olá, " & System.User.DisplayName & "! 👋")
+
+    - kind: SendActivity
+      id: WelcomeCard
+      activity:
+        attachments:
+          - kind: AdaptiveCardTemplate
+            cardContent: |-
+              ={
+                '$schema': "http://adaptivecards.io/schemas/adaptive-card.json",
+                type: "AdaptiveCard",
+                version: "1.5",
+                body: [
+                  {
+                    type: "ColumnSet",
+                    columns: [
+                      {
+                        type: "Column",
+                        width: "auto",
+                        items: [
+                          {
+                            type: "Image",
+                            url: "https://cdn-icons-png.flaticon.com/512/4712/4712109.png",
+                            size: "Medium",
+                            style: "Person"
+                          }
+                        ]
+                      },
+                      {
+                        type: "Column",
+                        width: "stretch",
+                        items: [
+                          {
+                            type: "TextBlock",
+                            text: Topic.greeting_text,
+                            size: "Large",
+                            weight: "Bolder",
+                            wrap: true
+                          },
+                          {
+                            type: "TextBlock",
+                            text: "Eu sou o **CAU - Tickets**",
+                            size: "Medium",
+                            weight: "Bolder",
+                            color: "Accent",
+                            wrap: true,
+                            spacing: "None"
+                          }
+                        ],
+                        verticalContentAlignment: "Center"
+                      }
+                    ]
+                  },
+                  {
+                    type: "TextBlock",
+                    text: "Seu assistente virtual para abertura e acompanhamento de chamados no GLPI.",
+                    wrap: true,
+                    spacing: "Medium",
+                    separator: true,
+                    color: "Default"
+                  },
+                  {
+                    type: "Container",
+                    spacing: "Medium",
+                    style: "emphasis",
+                    items: [
+                      {
+                        type: "TextBlock",
+                        text: "**Como posso ajudar?**",
+                        weight: "Bolder",
+                        size: "Medium"
+                      },
+                      {
+                        type: "TextBlock",
+                        text: "• Abrir novos chamados técnicos
+              • Acompanhar solicitações existentes
+              • Encaminhar para atendimento humano",
+                        wrap: true,
+                        spacing: "Small"
+                      }
+                    ]
+                  },
+                  {
+                    type: "TextBlock",
+                    text: "💬 Descreva seu problema ou escolha uma opção:",
+                    wrap: true,
+                    spacing: "Medium",
+                    weight: "Bolder",
+                    size: "Small"
+                  }
+                ],
+                actions: [
+                  {
+                    type: "Action.Execute",
+                    title: "🎫 Abrir chamado",
+                    verb: "createTicket",
+                    data: {
+                      triggerText: "criar chamado"
+                    },
+                    style: "positive"
+                  },
+                  {
+                    type: "Action.Submit",
+                    title: "👤 Falar com humano",
+                    data: {
+                      msteams: {
+                        type: "messageBack",
+                        displayText: "Falar com humano",
+                        text: "falar com humano"
+                      }
+                    }
+                  }
+                ]
+              }
+
+inputType: {}
+outputType: {}
+variables:
+  - name: Topic.greeting_text
+    type: string
