@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 from flask import Blueprint, jsonify
+from flask import current_app
 from ..config import load_settings
 from ..services.glpi import autenticar_glpi
 
@@ -27,6 +28,21 @@ def health_check():
                 status["glpi_error"] = str(e)
                 status["status"] = "warning"
         return jsonify(status), 200
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@health_bp.route("/routes", methods=["GET"])
+def list_routes():
+    try:
+        rules = []
+        for rule in current_app.url_map.iter_rules():
+            rules.append({
+                "rule": str(rule),
+                "methods": sorted(list(rule.methods or [])),
+                "endpoint": rule.endpoint,
+            })
+        return jsonify({"routes": rules}), 200
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 

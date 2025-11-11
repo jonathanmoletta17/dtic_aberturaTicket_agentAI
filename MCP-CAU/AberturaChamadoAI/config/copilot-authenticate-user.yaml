@@ -1,0 +1,184 @@
+kind: AdaptiveDialog
+modelDescription: Topico simples para testar a autenticacao de usuario via API do Agente GLPI.
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    triggerQueries:
+      - testar autenticacao
+      - autenticar usuario
+      - login glpi
+      - fazer login
+
+  actions:
+    - kind: SendActivity
+      id: Intro
+      activity: "Teste de autenticacao no GLPI. Informe login (ex.: j.silva) ou email corporativo e sua senha."
+
+    - kind: Question
+      id: AskLogin
+      variable: Topic.login
+      prompt: "Login (ex.: j.silva). Se preferir, deixe em branco e eu pergunto seu email."
+      entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: AskEmailIfNoLogin
+      conditions:
+        - id: NoLogin
+          condition: =IsBlank(Topic.login)
+          actions:
+            - kind: Question
+              id: AskEmail
+              variable: Topic.email
+              prompt: "Email corporativo (ex.: usuario@empresa.com). Informe um email valido."
+              entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: AskPassword
+      variable: Topic.password
+      prompt: Senha (nao sera armazenada).
+      entity: StringPrebuiltEntity
+
+    - kind: HttpRequestAction
+      id: CallAuth
+      method: Post
+      url: ="https://yang-substance-capture-diabetes.trycloudflare.com/api/authenticate-user"
+      headers:
+        Accept: application/json
+        Content-Type: application/json; charset=utf-8
+
+      body:
+        kind: JsonRequestContent
+        content: "= { login: If(Not(IsBlank(Topic.login)), Text(Trim(Topic.login)), \"\"), email: If(Not(IsBlank(Topic.email)), Text(Trim(Topic.email)), \"\"), password: Text(Topic.password) }"
+
+      response: Topic.authJson
+      responseSchema: String
+
+    - kind: SetVariable
+      id: ParseAuthJson
+      variable: Topic.authObj
+      value: =ParseJSON(Topic.authJson)
+
+    - kind: ConditionGroup
+      id: CheckAuth
+      conditions:
+        - id: Success
+          condition: =Or(Boolean(Topic.authObj.sucesso), Boolean(Topic.authObj.success))
+          actions:
+            - kind: SetVariable
+              id: SetVarUserName
+              variable: Topic.varUserName
+              value: =If(Not(IsBlank(Text(Topic.authObj.usuario.name))), Text(Topic.authObj.usuario.name), Text(Topic.authObj.usuario.login))
+
+            - kind: SetVariable
+              id: SetVarUserEmail
+              variable: Topic.varUserEmail
+              value: =Text(Topic.authObj.usuario.email)
+
+            - kind: SetVariable
+              id: SetVarUserId
+              variable: Topic.varUserIdGLPI
+              value: =Text(Topic.authObj.usuario.id)
+
+            - kind: SetVariable
+              id: SetApiStatusSuccess
+              variable: Topic.varApiStatus
+              value: success
+
+            - kind: SendActivity
+              id: AuthOk
+              activity: Autenticado com sucesso.
+
+      elseActions:
+        - kind: SetVariable
+          id: SetApiStatusError
+          variable: Topic.varApiStatus
+          value: error
+
+        - kind: SetVariable
+          id: SetApiErrorMessage
+          variable: Topic.varApiErrorMessage
+          value: =If(Not(IsBlank(Text(Topic.authObj.erro))), Text(Topic.authObj.erro), If(Not(IsBlank(Text(Topic.authObj.error))), Text(Topic.authObj.error), "(erro nao especificado)"))
+
+        - kind: SendActivity
+          id: AuthFail
+          activity: Falha na autenticacao.
+
+    - kind: SetVariable
+      id: MirrorAuthResponse
+      variable: Topic.authResponse
+      value: =JSON(Topic.authObj, JSONFormat.Compact)
+
+    - kind: EndDialog
+      id: end
+
+inputType:
+  properties:
+    email:
+      displayName: email
+      type: String
+
+    login:
+      displayName: login
+      type: String
+
+    password:
+      displayName: password
+      type: String
+
+outputType:
+  properties:
+    authResponse:
+      displayName: authResponse
+      type: String
+
+    varApiErrorMessage:
+      displayName: varApiErrorMessage
+      type: String
+
+    varApiStatus:
+      displayName: varApiStatus
+      type: String
+
+    varUserEmail:
+      displayName: varUserEmail
+      type: String
+
+    varUserIdGLPI:
+      displayName: varUserIdGLPI
+      type: String
+
+    varUserName:
+      displayName: varUserName
+      type: String
+
+variables:
+  - name: Topic.login
+    type: String
+
+  - name: Topic.email
+    type: String
+
+  - name: Topic.password
+    type: String
+
+  - name: Topic.authJson
+    type: String
+
+  - name: Topic.authObj
+    type: Object
+
+  - name: varUserName
+    type: String
+
+  - name: varUserEmail
+    type: String
+
+  - name: varUserIdGLPI
+    type: String
+
+  - name: varApiStatus
+    type: String
+
+  - name: varApiErrorMessage
+    type: String

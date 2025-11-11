@@ -1,0 +1,9 @@
+extends: default
+rules:
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  line-length: disable
+  trailing-spaces: enable
+  new-line-at-end-of-file: enable
+  truthy: disable

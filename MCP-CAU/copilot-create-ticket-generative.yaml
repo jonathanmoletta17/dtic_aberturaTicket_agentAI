@@ -1,0 +1,455 @@
+kind: AdaptiveDialog
+modelDescription: Tópico para coletar detalhes de incidentes técnicos (título, descrição, categoria, impacto, localização e contato telefônico) e abrir um novo chamado completo no sistema GLPI via requisição POST para a API do Agente.
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    triggerQueries:
+      - criar chamado
+      - abrir ticket
+      - preciso de ajuda
+      - reportar problema
+      - novo chamado
+      - solicitar suporte
+      - problema técnico
+      - ajuda com equipamento
+      - fazer um ticket
+      - tenho um problema
+
+  actions:
+    - kind: BeginDialog
+      id: lw7r4t
+      input: {}
+      dialog: cr4b8_cienciaEAnaliseDeDados.topic.ValidausuarionoGLPI
+      output:
+        binding:
+          glpi_user_id: Topic.glpi_user_id
+          glpi_user_login: Topic.glpi_user_login
+          glpi_user_name: Topic.glpi_user_name
+          user_email_validated: Topic.user_email_validated
+          userLookup: Topic.userLookup
+
+    - kind: AnswerQuestionWithAI
+      id: GAExtract
+      autoSend: false
+      variable: Topic.ga_text
+      userInput: =System.Activity.Text
+      additionalInstructions: |-
+        Você é um assistente que extrai campos estruturados para abertura de chamados.
+        A partir da última mensagem do usuário (intenção: abrir chamado), identifique:
+        - title: resumo curto do incidente
+        - description: descrição detalhada
+        - category: uma das opções [HARDWARE_COMPUTADOR, HARDWARE_IMPRESSORA, HARDWARE_MONITOR, SOFTWARE, CONECTIVIDADE, SEGURANCA, SOLICITACAO, OUTROS]
+        - impact: uma das opções [BAIXO, MEDIO, ALTO, MUITO_ALTO, CRITICO]
+        - location: local ou unidade onde ocorre
+        - contact_phone: telefone de contato
+
+        Regras:
+        - Responda APENAS com um JSON válido, sem texto adicional.
+        - Não use blocos de código Markdown.
+        - Não use backticks (```), nem prefixo "json".
+        - Retorne apenas um objeto JSON. Inicie com o caractere de abertura de chave e termine com o de fechamento.
+        - Use MAIÚSCULO para category e impact.
+        - Se um campo não estiver presente, use null.
+        - Não invente informações; apenas extraia o que está dito ou inferível com segurança.
+
+    - kind: SetVariable
+      id: ParseGA
+      variable: Topic.ga_json
+      value: =IfError(If(!IsBlank(Topic.ga_text), ParseJSON(Topic.ga_text), Blank()), Blank())
+
+    - kind: SetVariable
+      id: SetFromGA_Title
+      variable: Topic.title
+      value: =If(IsBlank(Topic.title), IfError(Text(Topic.ga_json.title), Blank()), Topic.title)
+
+    - kind: SetVariable
+      id: SetFromGA_Description
+      variable: Topic.description
+      value: =If(IsBlank(Topic.description), IfError(Text(Topic.ga_json.description), Blank()), Topic.description)
+
+    - kind: SetVariable
+      id: SetFromGA_Category
+      variable: Topic.category_user_friendly
+      value: =If(IsBlank(Topic.category_user_friendly), IfError(Upper(Text(Topic.ga_json.category)), Blank()), Topic.category_user_friendly)
+
+    - kind: SetVariable
+      id: SetFromGA_Impact
+      variable: Topic.impact
+      value: =If(IsBlank(Topic.impact), IfError(Upper(Text(Topic.ga_json.impact)), Blank()), Topic.impact)
+
+    - kind: SetVariable
+      id: SetFromGA_Location
+      variable: Topic.location
+      value: =If(IsBlank(Topic.location), IfError(Text(Topic.ga_json.location), Blank()), Topic.location)
+
+    - kind: SetVariable
+      id: SetFromGA_Phone
+      variable: Topic.contact_phone
+      value: =If(IsBlank(Topic.contact_phone), IfError(Text(Topic.ga_json.contact_phone), Blank()), Topic.contact_phone)
+
+    - kind: SetVariable
+      id: Sanitize_Title
+      variable: Topic.title
+      value: =If(Or(Topic.title = "", Lower(Text(Topic.title)) = "null"), Blank(), Topic.title)
+
+    - kind: SetVariable
+      id: Sanitize_Description
+      variable: Topic.description
+      value: =If(Or(Topic.description = "", Lower(Text(Topic.description)) = "null"), Blank(), Topic.description)
+
+    - kind: SetVariable
+      id: Sanitize_Category
+      variable: Topic.category_user_friendly
+      value: =If(Or(Topic.category_user_friendly = "", Lower(Text(Topic.category_user_friendly)) = "null"), Blank(), Topic.category_user_friendly)
+
+    - kind: SetVariable
+      id: Sanitize_Impact
+      variable: Topic.impact
+      value: =If(Or(Topic.impact = "", Lower(Text(Topic.impact)) = "null"), Blank(), Topic.impact)
+
+    - kind: SetVariable
+      id: Sanitize_Location
+      variable: Topic.location
+      value: =If(Or(Topic.location = "", Lower(Text(Topic.location)) = "null"), Blank(), Topic.location)
+
+    - kind: SetVariable
+      id: Sanitize_Phone
+      variable: Topic.contact_phone
+      value: =If(Or(Topic.contact_phone = "", Lower(Text(Topic.contact_phone)) = "null"), Blank(), Topic.contact_phone)
+
+    - kind: ConditionGroup
+      id: CheckIfNoDataExtracted
+      conditions:
+        - id: NoDataExtracted
+          condition: =And(IsBlank(Topic.title), IsBlank(Topic.description), IsBlank(Topic.category_user_friendly), IsBlank(Topic.impact), IsBlank(Topic.location), IsBlank(Topic.contact_phone))
+          actions:
+            - kind: SendActivity
+              id: WelcomeMessage
+              activity: |
+                📋 **Vamos abrir um chamado no GLPI!**
+
+                Por favor, forneça as seguintes informações:
+                • Título do problema
+                • Descrição detalhada
+                • Categoria
+                • Nível de impacto
+                • Localização
+                • Telefone de contato
+
+                Vou fazer algumas perguntas para coletar esses dados. 👇
+
+    - kind: ConditionGroup
+      id: CheckTitle
+      conditions:
+        - id: TitleMissing
+          condition: =Or(IsBlank(Topic.title), IsBlankOrError(Topic.title))
+          actions:
+            - kind: Question
+              id: GetTitle
+              variable: Topic.title
+              prompt: |
+                📝 **Título do Chamado**
+
+                Forneça um resumo curto do problema.
+                Ex: Impressora da Sala 101 não liga
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: CheckDescription
+      conditions:
+        - id: DescriptionMissing
+          condition: =Or(IsBlank(Topic.description), IsBlankOrError(Topic.description))
+          actions:
+            - kind: Question
+              id: GetDescription
+              variable: Topic.description
+              prompt: |
+                📋 **Descrição detalhada**
+
+                Descreva o incidente com detalhes (mínimo 50 caracteres).
+                Inclua: quando começou, o que acontece, mensagens de erro, etc.
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: CheckCategory
+      conditions:
+        - id: CategoryMissing
+          condition: =Or(IsBlank(Topic.category_user_friendly), IsBlankOrError(Topic.category_user_friendly))
+          actions:
+            - kind: Question
+              id: GetCategory
+              variable: Topic.category_user_friendly
+              prompt: |
+                📂 **Categoria** (obrigatório - digite em MAIÚSCULO)
+
+                Escolha uma das opções:
+                • HARDWARE_COMPUTADOR
+                • HARDWARE_IMPRESSORA
+                • HARDWARE_MONITOR
+                • SOFTWARE
+                • CONECTIVIDADE
+                • SEGURANCA
+                • SOLICITACAO
+                • OUTROS
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: CheckImpact
+      conditions:
+        - id: ImpactMissing
+          condition: =Or(IsBlank(Topic.impact), IsBlankOrError(Topic.impact))
+          actions:
+            - kind: Question
+              id: GetImpact
+              variable: Topic.impact
+              prompt: |
+                ⚡ **Impacto** (obrigatório - digite em MAIÚSCULO)
+
+                Escolha o nível de impacto:
+                • BAIXO - Problema menor, não urgente
+                • MEDIO - Problema moderado (padrão)
+                • ALTO - Afeta produtividade
+                • MUITO_ALTO - Afeta várias pessoas
+                • CRITICO - Sistema parado
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: CheckLocation
+      conditions:
+        - id: LocationMissing
+          condition: =Or(IsBlank(Topic.location), IsBlankOrError(Topic.location))
+          actions:
+            - kind: Question
+              id: GetLocation
+              variable: Topic.location
+              prompt: |
+                📍 **Localização**
+
+                Onde está ocorrendo o problema?
+                Ex: Prédio B - 3º andar; Filial Porto Alegre
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: CheckPhone
+      conditions:
+        - id: PhoneMissing
+          condition: =Or(IsBlank(Topic.contact_phone), IsBlankOrError(Topic.contact_phone))
+          actions:
+            - kind: Question
+              id: GetPhone
+              variable: Topic.contact_phone
+              prompt: |
+                📞 **Telefone de contato** (obrigatório - somente números)
+
+                Informe um telefone com DDD.
+                Ex: 51999999999
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: ValidateBeforeCreate
+      conditions:
+        - id: HasAllFields
+          condition: =And(Not(IsBlank(Topic.title)), Not(IsBlank(Topic.description)), Not(IsBlank(Topic.category_user_friendly)), Not(IsBlank(Topic.impact)), Not(IsBlank(Topic.location)), Not(IsBlank(Topic.contact_phone)))
+          actions:
+            - kind: SetVariable
+              id: NormalizePhone
+              variable: Topic.contact_phone
+              value: =If(IsBlank(Topic.contact_phone), Blank(), Substitute(Substitute(Substitute(Substitute(Text(Topic.contact_phone), " ", ""), "-", ""), "(", ""), ")", ""))
+
+            - kind: HttpRequestAction
+              id: CreateTicket
+              method: Post
+              url: ="https://justify-intermediate-hamilton-assessment.trycloudflare.com/api/create-ticket-complete"
+              headers:
+                Accept: application/json
+                Content-Type: application/json; charset=utf-8
+
+              body:
+                kind: JsonRequestContent
+                content: |-
+                  ={
+                    title: If(IsBlank(Topic.title), "Chamado via Copilot Studio", Text(Topic.title)),
+                    description: Topic.description,
+                    category: Upper(If(IsBlank(Topic.category_user_friendly), "OUTROS", Text(Topic.category_user_friendly))),
+                    impact: Upper(If(IsBlank(Topic.impact), "MEDIO", Text(Topic.impact))),
+                    location: Topic.location,
+                    contact_phone: Topic.contact_phone,
+                    requester_email: If(Boolean(Topic.user_email_validated) && !IsBlank(Topic.userLookup.resultado.email), Text(Topic.userLookup.resultado.email), Text(System.User.Email))
+                  }
+
+              response: Topic.createTicketResponse
+              responseSchema: Any
+
+            - kind: ConditionGroup
+              id: CheckCreateTicket
+              conditions:
+                - id: Success
+                  condition: =Boolean(Topic.createTicketResponse.sucesso)
+                  actions:
+                    - kind: SetVariable
+                      id: SetTicketId
+                      variable: Topic.ticket_id
+                      value: =Topic.createTicketResponse.ticket_id
+
+                    - kind: SendActivity
+                      id: ConfirmCreated
+                      activity:
+                        attachments:
+                          - kind: AdaptiveCardTemplate
+                            cardContent: |-
+                              ={
+                                type: "AdaptiveCard",
+                                '$schema': "https://adaptivecards.io/schemas/adaptive-card.json",
+                                version: "1.5",
+                                body: [
+                                  {
+                                    type: "Container",
+                                    style: "good",
+                                    items: [
+                                      {
+                                        type: "TextBlock",
+                                        text: "✅ Chamado Criado com Sucesso",
+                                        weight: "Bolder",
+                                        size: "Large",
+                                        color: "Good"
+                                      },
+                                      {
+                                        type: "TextBlock",
+                                        text: "Seu chamado foi registrado no sistema GLPI",
+                                        isSubtle: true,
+                                        spacing: "Small"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    type: "FactSet",
+                                    separator: true,
+                                    spacing: "Medium",
+                                    facts: [
+                                      {
+                                        title: "🎫 Número:",
+                                        value: Text(Topic.ticket_id)
+                                      },
+                                      {
+                                        title: "📝 Título:",
+                                        value: If(IsBlank(Topic.title), "Não informado", Text(Topic.title))
+                                      },
+                                      {
+                                        title: "📂 Categoria:",
+                                        value: Text(Topic.category_user_friendly)
+                                      },
+                                      {
+                                        title: "⚡ Impacto:",
+                                        value: Text(Topic.impact)
+                                      },
+                                      {
+                                        title: "📍 Local:",
+                                        value: Text(Topic.location)
+                                      },
+                                      {
+                                        title: "📞 Telefone:",
+                                        value: If(IsBlank(Topic.contact_phone), "Não informado", Text(Topic.contact_phone))
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    type: "Container",
+                                    spacing: "Medium",
+                                    separator: true,
+                                    items: [
+                                      {
+                                        type: "TextBlock",
+                                        text: "📋 Descrição:",
+                                        weight: "Bolder",
+                                        size: "Small",
+                                        spacing: "None"
+                                      },
+                                      {
+                                        type: "TextBlock",
+                                        text: If(IsBlank(Topic.description), "Não informada", Text(Topic.description)),
+                                        wrap: true,
+                                        spacing: "Small"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    type: "Container",
+                                    spacing: "Medium",
+                                    items: [
+                                      {
+                                        type: "TextBlock",
+                                        text: "ℹ️ Você receberá atualizações por e-mail.",
+                                        wrap: true,
+                                        size: "Small",
+                                        isSubtle: true,
+                                        spacing: "Small"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+
+                - id: Failure
+                  condition: =Not(Boolean(Topic.createTicketResponse.sucesso))
+                  actions:
+                    - kind: SendActivity
+                      id: ReportError
+                      activity: |
+                        ❌ Falha ao criar o chamado.
+                        Erro: {Topic.createTicketResponse.erro}
+                        Trace: {Topic.createTicketResponse.trace_id}
+
+    - kind: EndDialog
+      id: EYlGOV
+
+inputType: {}
+outputType: {}
+variables:
+  - name: Topic.ga_text
+    type: string
+
+  - name: Topic.ga_json
+    type: any
+
+  - name: Topic.user_email
+    type: string
+
+  - name: Topic.user_email_validated
+    type: boolean
+
+  - name: Topic.userLookup
+    type: any
+
+  - name: Topic.glpi_user_id
+    type: number
+
+  - name: Topic.glpi_user_login
+    type: string
+
+  - name: Topic.glpi_user_name
+    type: string
+
+  - name: Topic.title
+    type: string
+
+  - name: Topic.description
+    type: string
+
+  - name: Topic.category_user_friendly
+    type: string
+
+  - name: Topic.impact
+    type: string
+
+  - name: Topic.location
+    type: string
+
+  - name: Topic.contact_phone
+    type: string
+
+  - name: Topic.createTicketResponse
+    type: any
+
+  - name: Topic.ticket_id
+    type: number

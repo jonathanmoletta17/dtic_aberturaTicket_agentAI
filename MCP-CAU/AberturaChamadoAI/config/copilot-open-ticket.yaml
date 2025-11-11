@@ -1,0 +1,125 @@
+kind: AdaptiveDialog
+modelDescription: |-
+  Fluxo principal de abertura de chamados no GLPI.
+  Orquestra autenticação, extração de dados e criação do ticket.
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    triggerQueries:
+      - abrir chamado
+      - criar chamado
+  actions:
+    - kind: SendActivity
+      id: sendActivity_vCpeLt
+      activity: "Vamos autenticar você, coletar as informações e abrir seu chamado no GLPI."
+
+    - kind: BeginDialog
+      id: 23FmOi
+      input: {}
+      dialog: cr4b8_cienciaEAnaliseDeDados.topic.AutenticarUsuariosnoGLPI
+      output:
+        binding:
+          varUserName: varUserName
+          varUserEmail: varUserEmail
+          varUserIdGLPI: varUserIdGLPI
+          varApiStatus: varApiStatus
+          varApiErrorMessage: varApiErrorMessage
+
+    - kind: ConditionGroup
+      id: AuthCheck
+      conditions:
+        - id: AuthError
+          condition: =varApiStatus = "error"
+          actions:
+            - kind: SendActivity
+              id: AuthErrorMsg
+              activity: "Não foi possível autenticar. Verifique seus dados ou tente mais tarde."
+            - kind: EndDialog
+      elseActions: []
+
+    - kind: BeginDialog
+      id: LFjQgK
+      input: {}
+      dialog: cr4b8_cienciaEAnaliseDeDados.topic.ExtrairDadosChamado
+      output:
+        binding:
+          varUserName: varUserName
+          varUserEmail: varUserEmail
+          varTicketSubject: varTicketSubject
+          varTicketDescription: varTicketDescription
+          varTicketCategory: varTicketCategory
+          varTicketPriority: varTicketPriority
+          varTicketLocation: varTicketLocation
+          varTicketExtension: varTicketExtension
+          varCanProceed: varCanProceed
+
+    - kind: ConditionGroup
+      id: CheckCanProceed
+      conditions:
+        - id: CannotProceed
+          condition: =varCanProceed = "no"
+          actions:
+            - kind: SetVariable
+              id: SetCancelledStatus
+              variable: varApiStatus
+              value: "cancelled"
+            - kind: SendActivity
+              id: CancelMsg
+              activity: "Entendido. O chamado não será aberto com os dados informados."
+            - kind: EndDialog
+      elseActions: []
+
+    - kind: BeginDialog
+      id: CreateTicket
+      input: {}
+      dialog: cr4b8_cienciaEAnaliseDeDados.topic.CriarTicketGLPI
+      output:
+        binding:
+          varTicketId: varTicketId
+          varApiStatus: varApiStatus
+          varApiErrorMessage: varApiErrorMessage
+
+    - kind: ConditionGroup
+      id: FinalMessage
+      conditions:
+        - id: TicketCreated
+          condition: =And(varApiStatus = "success", Not(IsBlank(varTicketId)))
+          actions:
+            - kind: SendActivity
+              id: SuccessMsg
+              activity: "✅ Chamado aberto com sucesso! Número: {varTicketId}. Você receberá atualizações por e-mail."
+        - id: TicketError
+          condition: =varApiStatus = "error"
+          actions:
+            - kind: SendActivity
+              id: ErrorMsg
+              activity: "❌ Não foi possível abrir o chamado. Detalhes: {varApiErrorMessage}"
+
+inputType: {}
+outputType:
+  properties:
+    varUserName:
+      type: String
+    varUserEmail:
+      type: String
+    varUserIdGLPI:
+      type: String
+    varTicketSubject:
+      type: String
+    varTicketDescription:
+      type: String
+    varTicketCategory:
+      type: String
+    varTicketPriority:
+      type: String
+    varTicketLocation:
+      type: String
+    varTicketExtension:
+      type: String
+    varTicketId:
+      type: String
+    varApiStatus:
+      type: String
+    varApiErrorMessage:
+      type: String

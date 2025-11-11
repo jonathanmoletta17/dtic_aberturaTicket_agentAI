@@ -1,0 +1,124 @@
+kind: AdaptiveDialog
+modelDescription: "Cria ticket no GLPI usando os dados coletados."
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent: {}
+  actions:
+    - kind: HttpRequestAction
+      id: CreateTicketRequest
+      method: Post
+      url: ="https://yang-substance-capture-diabetes.trycloudflare.com/api/create-ticket-complete"
+      headers:
+        Accept: application/json
+        Content-Type: application/json; charset=utf-8
+
+      body:
+        kind: JsonRequestContent
+        content: |-
+          ={
+            requester_email: Trim(varUserEmail),
+            title: Text(varTicketSubject),
+            description: Text(varTicketDescription),
+            category: Upper(varTicketCategory),
+            impact: Upper(varTicketPriority),
+            location: Text(varTicketLocation),
+            contact_phone: Text(varTicketExtension)
+          }
+
+      response: Topic.createJson
+      responseSchema: String
+
+    - kind: SetVariable
+      id: ParseCreateJson
+      variable: Topic.createObj
+      value: =ParseJSON(Topic.createJson)
+
+    - kind: ConditionGroup
+      id: HandleCreateResponse
+      conditions:
+        - id: CreateSuccess
+          condition: =And(Or(Boolean(Topic.createObj.sucesso), Boolean(Topic.createObj.success)),Not(IsBlank(Topic.createObj.ticket_id)))
+          actions:
+            - kind: SetVariable
+              id: SetTicketId
+              variable: varTicketId
+              value: =Text(Topic.createObj.ticket_id)
+            - kind: SetVariable
+              id: SetApiStatusSuccess
+              variable: varApiStatus
+              value: "success"
+            - kind: SendActivity
+              id: NotifySuccess
+              activity: "✅ Chamado criado com sucesso! Número: {varTicketId}."
+
+      elseActions:
+        - kind: SetVariable
+          id: SetApiStatusError
+          variable: varApiStatus
+          value: "error"
+        - kind: SetVariable
+          id: SetApiErrorMessage
+          variable: varApiErrorMessage
+          value: =If(
+            Not(IsBlank(Topic.createObj.erro)),
+            Text(Topic.createObj.erro),
+            If(Not(IsBlank(Topic.createObj.error)),Text(Topic.createObj.error),"(erro não especificado)"))
+        - kind: SendActivity
+          id: NotifyError
+          activity: "❌ Falha ao criar o chamado. Detalhes: {varApiErrorMessage}"
+
+    - kind: EndDialog
+      id: End
+
+inputType:
+  properties:
+    varUserEmail:
+      type: String
+    varTicketSubject:
+      type: String
+    varTicketDescription:
+      type: String
+    varTicketCategory:
+      type: String
+    varTicketPriority:
+      type: String
+    varTicketLocation:
+      type: String
+    varTicketExtension:
+      type: String
+
+outputType:
+  properties:
+    varTicketId:
+      type: String
+    varApiStatus:
+      type: String
+    varApiErrorMessage:
+      type: String
+
+variables:
+  - name: varUserEmail
+    type: String
+  - name: varTicketSubject
+    type: String
+  - name: varTicketDescription
+    type: String
+  - name: varTicketCategory
+    type: String
+  - name: varTicketPriority
+    type: String
+  - name: varTicketLocation
+    type: String
+  - name: varTicketExtension
+    type: String
+  - name: varTicketId
+    type: String
+  - name: varApiStatus
+    type: String
+  - name: varApiErrorMessage
+    type: String
+  - name: Topic.createJson
+    type: String
+  - name: Topic.createObj
+    type: Object

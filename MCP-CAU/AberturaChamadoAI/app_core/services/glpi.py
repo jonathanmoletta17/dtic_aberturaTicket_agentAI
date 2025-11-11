@@ -50,82 +50,114 @@ def autenticar_glpi() -> Dict[str, str]:
         raise
 
 
+def autenticar_usuario_por_credenciais(login: str, password: str, totp_code: str | None = None) -> Dict[str, Any]:
+    """
+    Inicia uma sessão no GLPI usando login/senha do usuário, obtém o glpiID ativo,
+    coleta metadados mínimos (nome/email) e encerra a sessão, retornando status.
+
+    Observações:
+    - Não loga nem retorna senha.
+    - Suporta TOTP (se configurado no GLPI) via campo "code".
+    - Valida pós-logout que o token foi invalidado.
+    """
+    if not login or not password:
+        raise ValueError("Login e password são obrigatórios")
+
+    settings = load_settings()
+    headers = {
+        "App-Token": settings.glpi_app_token or "",
+        "Content-Type": "application/json",
+    }
+    payload: Dict[str, Any] = {"login": login, "password": password}
+    if totp_code:
+        # Campo comum para TOTP nas versões recentes é 'code'
+        payload["code"] = totp_code
+
+    # 1) initSession
+    resp = requests.post(f"{settings.glpi_url}/initSession", json=payload, headers=headers, timeout=15)
+    # Tratar explicitamente falhas de autenticação como estado estruturado
+    if resp.status_code == 401:
+        reason = None
+        try:
+            j = resp.json()
+            reason = j.get("message") or j.get("error")
+        except Exception:
+            reason = None
+        # Se houver indicação de TOTP/code, sinalizar claramente
+        if not totp_code and reason and ("code" in str(reason).lower() or "totp" in str(reason).lower()):
+            return {
+                "status": "totp_required",
+                "login": login,
+                "reason": str(reason),
+            }
+        return {
+            "status": "unauthorized",
+            "login": login,
+            "reason": str(reason) if reason else resp.text,
+        }
+    resp.raise_for_status()
+    data = resp.json()
+    session_token = data.get("session_token")
+    if not session_token:
+        raise RuntimeError("Session token não retornado pelo GLPI")
+
+    session_headers = {**headers, "Session-Token": session_token}
+
+    # 2) getFullSession -> glpiID
+    uid: Any = None
+    try:
+        s = requests.get(f"{settings.glpi_url}/getFullSession", headers=session_headers, timeout=10)
+        if s.ok:
+            sdata = s.json()
+            uid = sdata.get("glpiID")
+    except Exception:
+        pass
+
+    # 3) Buscar metadados pelo login (melhorar resposta para Copilot) via helper centralizado
+    user_name = None
+    user_email = None
+    try:
+        res_busca = buscar_usuario_glpi(login=login, headers=session_headers)
+        if res_busca.get("found") and isinstance(res_busca.get("user"), dict):
+            info = res_busca["user"]
+            user_name = info.get("name")
+            user_email = info.get("email")
+            if uid is None and isinstance(info.get("id"), int):
+                uid = info.get("id")
+    except Exception:
+        # Metadados são auxiliares; não interromper o fluxo
+        pass
+
+    # 4) Encerrar sessão
+    logout_verified = False
+    try:
+        k = requests.post(f"{settings.glpi_url}/killSession", headers=session_headers, timeout=10)
+        k.raise_for_status()
+        # Verificar se token foi invalidado
+        chk = requests.get(f"{settings.glpi_url}/getFullSession", headers=session_headers, timeout=8)
+        logout_verified = (chk.status_code == 401) or (not chk.ok)
+    except Exception:
+        logout_verified = False
+
+    return {
+        "status": "ok",
+        "user_id": uid if isinstance(uid, int) else None,
+        "login": login,
+        "name": user_name,
+        "email": user_email,
+        "logout_verified": logout_verified,
+    }
+
+
 def buscar_usuario_por_email(email: str) -> Dict[str, Any]:
     if not email or not isinstance(email, str):
         raise ValueError("E-mail inválido para busca no GLPI")
 
-    headers = autenticar_glpi()
-    email_normalizado = email.strip()
-    settings = load_settings()
-    url_search = f"{settings.glpi_url}/search/User"
-
-    params_equals = {
-        "criteria[0][field]": 5,
-        "criteria[0][searchtype]": "equals",
-        "criteria[0][value]": email_normalizado,
-        "forcedisplay[0]": 1,
-        "forcedisplay[1]": 2,
-        "forcedisplay[2]": 5,
-        "forcedisplay[3]": 9,
-    }
-    params_contains = {
-        "criteria[0][field]": 5,
-        "criteria[0][searchtype]": "contains",
-        "criteria[0][value]": email_normalizado,
-        "forcedisplay[0]": 1,
-        "forcedisplay[1]": 2,
-        "forcedisplay[2]": 5,
-        "forcedisplay[3]": 9,
-    }
-
     try:
-        resp = requests.get(url_search, headers=headers, params=params_equals, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        rows = []
-        if isinstance(data, dict):
-            if isinstance(data.get("data"), list):
-                rows = data.get("data")
-            elif isinstance(data.get("rows"), list):
-                rows = data.get("rows")
-
-        if not rows:
-            resp2 = requests.get(url_search, headers=headers, params=params_contains, timeout=10)
-            resp2.raise_for_status()
-            data2 = resp2.json()
-            if isinstance(data2, dict):
-                if isinstance(data2.get("data"), list):
-                    rows = data2.get("data")
-                elif isinstance(data2.get("rows"), list):
-                    rows = data2.get("rows")
-            if rows:
-                data = data2
-
-        user_info = None
-        if rows:
-            item = rows[0]
-            if isinstance(item, dict):
-                uid = item.get("id") or item.get("users_id")
-                uname = item.get("name") or item.get("realname")
-                ulogin = item.get("login") or item.get("user_name")
-                uemail = item.get("email") or item.get("user_email")
-                if uid is None and any(k in item for k in ["1", "2", "5", "9"]):
-                    try:
-                        uid = item.get("2") or uid
-                    except Exception:
-                        uid = uid
-                    uname = uname or item.get("1") or item.get("9")
-                    uemail = uemail or item.get("5")
-                    ulogin = ulogin or item.get("9") or item.get("1")
-                user_info = {"id": uid, "name": uname, "login": ulogin, "email": uemail}
-            elif isinstance(item, list):
-                user_info = {
-                    "id": item[0] if len(item) > 0 else None,
-                    "name": item[1] if len(item) > 1 else None,
-                    "email": item[2] if len(item) > 2 else None,
-                    "login": item[3] if len(item) > 3 else None,
-                }
-
+        headers = autenticar_glpi()
+        email_normalizado = email.strip()
+        res = buscar_usuario_glpi(email=email_normalizado, headers=headers)
+        user_info = res.get("user") if isinstance(res.get("user"), dict) else None
         found = bool(user_info and user_info.get("id"))
         return {
             "found": found,
@@ -133,7 +165,7 @@ def buscar_usuario_por_email(email: str) -> Dict[str, Any]:
             "name": user_info.get("name") if user_info else None,
             "login": user_info.get("login") if user_info else None,
             "email": user_info.get("email") if user_info else email_normalizado,
-            "raw": data,
+            "raw": res.get("raw"),
         }
     except Exception as e:
         logger.error(f"Erro ao buscar usuário por e-mail no GLPI: {str(e)}")
@@ -207,5 +239,115 @@ def criar_ticket_glpi(dados: Dict[str, Any]) -> int:
     if not ticket_id:
         raise RuntimeError("ID do ticket não retornado pelo GLPI")
     return ticket_id
+
+def buscar_usuario_glpi(login: str | None = None, email: str | None = None, headers: Dict[str, str] | None = None) -> Dict[str, Any]:
+    """
+    Busca usuário no GLPI por login ou e-mail usando o endpoint /search/User.
+
+    - Tenta match exato (equals) e, se necessário, match parcial (contains).
+    - Retorna estrutura padronizada com id, name, login, email e o JSON bruto.
+    - Pode reutilizar um cabeçalho de sessão já autenticado (headers) ou autenticará automaticamente.
+    """
+    if not login and not email:
+        raise ValueError("Informe ao menos 'login' ou 'email' para busca no GLPI")
+
+    settings = load_settings()
+    if headers is None:
+        headers = autenticar_glpi()
+
+    url_search = f"{settings.glpi_url}/search/User"
+
+    def _extract_rows(data_obj: Any) -> list:
+        if isinstance(data_obj, dict):
+            if isinstance(data_obj.get("data"), list):
+                return data_obj.get("data")
+            if isinstance(data_obj.get("rows"), list):
+                return data_obj.get("rows")
+        return []
+
+    # Define campo e valor de busca
+    if email:
+        campo = 5  # email
+        valor = email.strip()
+    else:
+        campo = 1  # login
+        valor = str(login).strip()
+
+    base_forcedisplay = {
+        "forcedisplay[0]": 1,
+        "forcedisplay[1]": 2,
+        "forcedisplay[2]": 5,
+        "forcedisplay[3]": 9,
+    }
+
+    params_equals = {
+        **base_forcedisplay,
+        "criteria[0][field]": campo,
+        "criteria[0][searchtype]": "equals",
+        "criteria[0][value]": valor,
+    }
+    params_contains = {
+        **base_forcedisplay,
+        "criteria[0][field]": campo,
+        "criteria[0][searchtype]": "contains",
+        "criteria[0][value]": valor,
+    }
+
+    try:
+        resp = requests.get(url_search, headers=headers, params=params_equals, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        rows = _extract_rows(data)
+
+        # Se não encontrou nada, tenta contains
+        if not rows:
+            resp2 = requests.get(url_search, headers=headers, params=params_contains, timeout=10)
+            resp2.raise_for_status()
+            data2 = resp2.json()
+            rows = _extract_rows(data2)
+            if rows:
+                data = data2
+
+        selected = None
+        user_info = None
+        if rows:
+            # Preferir match exato por campo
+            if isinstance(rows[0], dict):
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    # chave 1 (login) ou 5 (email) conforme critério de busca
+                    chave = str(row.get(str(campo), "")).strip().lower()
+                    if chave == valor.strip().lower():
+                        selected = row
+                        break
+                if not selected:
+                    selected = rows[0]
+                item = selected
+                # Extrai campos padronizados
+                uid = item.get("id") or item.get("users_id") or item.get("2")
+                uname = item.get("name") or item.get("realname") or item.get("1") or item.get("9")
+                ulogin = item.get("login") or item.get("user_name") or item.get("9") or item.get("1")
+                uemail = item.get("email") or item.get("user_email") or item.get("5")
+                try:
+                    if isinstance(uid, str) and uid.isdigit():
+                        uid = int(uid)
+                except Exception:
+                    pass
+                user_info = {"id": uid, "name": uname, "login": ulogin, "email": uemail}
+            elif isinstance(rows[0], list):
+                item = rows[0]
+                user_info = {
+                    "id": item[0] if len(item) > 0 else None,
+                    "name": item[1] if len(item) > 1 else None,
+                    "email": item[2] if len(item) > 2 else None,
+                    "login": item[3] if len(item) > 3 else None,
+                }
+
+        found = bool(user_info and user_info.get("id"))
+        return {"found": found, "user": user_info, "raw": data}
+    except Exception as e:
+        logger.error(f"Erro ao buscar usuário no GLPI: {str(e)}")
+        raise
 
 

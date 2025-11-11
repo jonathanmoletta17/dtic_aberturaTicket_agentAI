@@ -1,0 +1,177 @@
+kind: AdaptiveDialog
+modelDescription: Tópico responsável por extrair todo tipo de informação relevante que preencha os campos do formulário para abertura de chamado. Toda vez que o usuário digitar algo, tópico deve ser acionado focado em buscar valores para os campos que devem ser preenchidos pelo usuário
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent: {}
+  actions:
+    - kind: ConditionGroup
+      id: AskNameIfMissing
+      conditions:
+        - id: MissingName
+          condition: =IsBlank(varUserName)
+          actions:
+            - kind: Question
+              id: AskUserName
+              variable: varUserName
+              prompt: "Qual seu nome?"
+              entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: AskEmailIfMissing
+      conditions:
+        - id: MissingEmail
+          condition: =IsBlank(varUserEmail)
+          actions:
+            - kind: Question
+              id: AskUserEmail
+              variable: varUserEmail
+              prompt: "Qual seu e-mail corporativo?"
+              entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: AskDescription
+      variable: varTicketDescription
+      prompt: "Descreva detalhadamente seu incidente."
+      entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: DeriveSubjectIfMissing
+      conditions:
+        - id: MissingSubject
+          condition: =IsBlank(varTicketSubject)
+          actions:
+            - kind: AnswerQuestionWithAI
+              id: DeriveSubject
+              autoSend: false
+              variable: Topic.subject_ai
+              userInput: =Text(varTicketDescription)
+              additionalInstructions: |-
+                Gere um título curto e claro para um chamado com base na descrição informada.
+                Retorne apenas o título, sem texto adicional.
+
+            - kind: SetVariable
+              id: SetSubjectFromAI
+              variable: varTicketSubject
+              value: =If(Not(IsBlank(Topic.subject_ai)), Text(Topic.subject_ai), "Chamado via Copilot")
+
+    - kind: Question
+      id: AskCategory
+      variable: varTicketCategory
+      prompt: "Qual categoria melhor se aplica? (ex.: HARDWARE_COMPUTADOR, SOFTWARE, CONECTIVIDADE, OUTROS)"
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: AskPriority
+      variable: varTicketPriority
+      prompt: "Qual impacto? (BAIXO, MEDIO, ALTO, MUITO_ALTO, CRITICO)"
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: AskLocation
+      variable: varTicketLocation
+      prompt: "Onde está ocorrendo o problema? (ex.: Prédio B - 3º andar)"
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: AskExtension
+      variable: varTicketExtension
+      prompt: "Informe seu telefone/ramal para contato (somente números)."
+      entity: StringPrebuiltEntity
+
+    - kind: SendActivity
+      id: ConfirmSummary
+      activity: |
+        Vou abrir o chamado com os dados:
+        Assunto: {varTicketSubject}
+        Descrição: {varTicketDescription}
+        Categoria: {varTicketCategory}
+        Impacto: {varTicketPriority}
+        Localização: {varTicketLocation}
+        Contato: {varUserEmail} / {varTicketExtension}
+
+    - kind: Question
+      id: AskConfirm
+      variable: Topic.confirm
+      prompt: "Posso prosseguir com a abertura?"
+      entity:
+        kind: ClosedListEntity
+        items:
+          - id: Sim
+            displayName: Sim
+          - id: Nao
+            displayName: Não
+
+    - kind: ConditionGroup
+      id: CheckConfirm
+      conditions:
+        - id: ConfirmYes
+          condition: =Topic.confirm = 'Sim'
+          actions:
+            - kind: SetVariable
+              id: SetCanProceedYes
+              variable: varCanProceed
+              value: "yes"
+        - id: ConfirmNo
+          condition: =Topic.confirm = 'Nao'
+          actions:
+            - kind: SendActivity
+              id: AdjustInfo
+              activity: "Ok, não vou abrir o chamado com esses dados. Você pode corrigir as informações ou começar novamente."
+            - kind: SetVariable
+              id: SetCanProceedNo
+              variable: varCanProceed
+              value: "no"
+
+    - kind: EndDialog
+      id: End
+
+inputType:
+  properties:
+    varUserName:
+      type: String
+    varUserEmail:
+      type: String
+
+outputType:
+  properties:
+    varUserName:
+      type: String
+    varUserEmail:
+      type: String
+    varTicketSubject:
+      type: String
+    varTicketDescription:
+      type: String
+    varTicketCategory:
+      type: String
+    varTicketPriority:
+      type: String
+    varTicketLocation:
+      type: String
+    varTicketExtension:
+      type: String
+    varCanProceed:
+      type: String
+
+variables:
+  - name: varUserName
+    type: String
+  - name: varUserEmail
+    type: String
+  - name: varTicketSubject
+    type: String
+  - name: varTicketDescription
+    type: String
+  - name: varTicketCategory
+    type: String
+  - name: varTicketPriority
+    type: String
+  - name: varTicketLocation
+    type: String
+  - name: varTicketExtension
+    type: String
+  - name: varCanProceed
+    type: String
+  - name: Topic.confirm
+    type: String

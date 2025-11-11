@@ -1,13 +1,14 @@
 kind: AdaptiveDialog
 modelDescription: Resolve usuário GLPI pelo email do usuário atual e retorna campos padronizados.
 beginDialog:
-  kind: OnRedirect
+  kind: OnRecognizedIntent
   id: main
+  intent: {}
   actions:
     - kind: HttpRequestAction
       id: LookupUser
       method: Get
-      url: = "https://minute-shots-kick-flying.trycloudflare.com/api/glpi-user-by-email?email=" & Trim(System.User.Email)
+      url: = "https://justify-intermediate-hamilton-assessment.trycloudflare.com/api/glpi-user-by-email?email=" & Trim(System.User.Email)
       headers:
         Accept: application/json
 
@@ -40,11 +41,6 @@ beginDialog:
               variable: Topic.user_email_validated
               value: true
 
-            - kind: SendActivity
-              id: ConfirmFound
-              activity: |
-                ✅ Usuário GLPI encontrado: {Topic.userLookup.resultado.name} ({Topic.userLookup.resultado.login}). Continuaremos com esta informação.
-
       elseActions:
         - kind: SetVariable
           id: SetNotValidated
@@ -59,19 +55,30 @@ beginDialog:
     - kind: EndDialog
       id: end
 
-inputType: {}
-variables:
-  - name: Topic.userLookup
-    type: any
+inputType:
+  properties:
+    user_email_validated:
+      displayName: user_email_validated
+      type: Boolean
 
-  - name: Topic.glpi_user_id
-    type: number
+outputType:
+  properties:
+    glpi_user_id:
+      displayName: glpi_user_id
+      type: Any
 
-  - name: Topic.glpi_user_login
-    type: string
+    glpi_user_login:
+      displayName: glpi_user_login
+      type: Any
 
-  - name: Topic.glpi_user_name
-    type: string
+    glpi_user_name:
+      displayName: glpi_user_name
+      type: Any
 
-  - name: Topic.user_email_validated
-    type: boolean
+    user_email_validated:
+      displayName: user_email_validated
+      type: Boolean
+
+    userLookup:
+      displayName: userLookup
+      type: Any

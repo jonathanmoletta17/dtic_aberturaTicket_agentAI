@@ -100,11 +100,14 @@ beginDialog:
                 ],
                 actions: [
                   {
-                    type: "Action.Execute",
+                    type: "Action.Submit",
                     title: "🎫 Abrir chamado",
-                    verb: "createTicket",
                     data: {
-                      triggerText: "criar chamado"
+                      msteams: {
+                        type: "messageBack",
+                        displayText: "Abrir chamado",
+                        text: "abrir chamado"
+                      }
                     },
                     style: "positive"
                   },
@@ -126,4 +129,4 @@ inputType: {}
 outputType: {}
 variables:
   - name: Topic.greeting_text
-    type: string
+    type: String
